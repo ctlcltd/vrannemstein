@@ -2,13 +2,13 @@
 
 Vrannemstein is a WordPress plugin to make image thumbnails via the client-side.
 
-It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) vips image processing library.
+It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) (vips image processing library).
 
-*Under development*
+🚧 *Under development* 🚧
 
 ## Usage
 
-Clone this repository in your WordPress plugins directory using `git`, or download tarball clicking "Clone" and "Download Zip".
+Clone this repository in your WordPress plugins directory using `git`, or download tarball clicking "Code" and "Download ZIP".
 
 From the `vrannemstein` directory, run `npm install` to download `wasm-vips`.
 
@@ -28,9 +28,14 @@ npm update
 
 Activate the plugin on WordPress Plugins (from WP-CLI `wp plugin activate vrannemstein`).
 
-A typical usage requires to configure your web server with the `wasm-vips` specific Cross-Origin policies, to enforce CORS isolation and to allow the `SharedArrayBuffer` browser feature. See the `www-config-sample` folder for examples to configure the server properly.
+A typical usage requires to configure your web server with the `wasm-vips` specific Cross-Origin policies, to enforce CORS isolation and to allow the `SharedArrayBuffer` browser feature.
 
-Next, overrides the plugin configuration from your theme or plugin, through the `vrannemstein_config` filter. See [vranemstein.php](https://github.com/ctlcltd/vrannemstein/blob/main/vrannemstein.php) and [wasm-vips/lib/vips.d.ts](https://github.com/kleisauke/wasm-vips/blob/master/lib/vips.d.ts) for the full options.
+> [!TIP]
+> See the `www-config-sample` folder for examples to configure the server properly.
+
+Next, overrides the plugin configuration from your theme or plugin, through the `'vrannemstein_config'` filter.
+
+See [vranemstein.php](https://github.com/ctlcltd/vrannemstein/blob/main/vrannemstein.php) and [wasm-vips/lib/vips.d.ts](https://github.com/kleisauke/wasm-vips/blob/master/lib/vips.d.ts) for the full options.
 
 ```php
 function config_example( $config ) {
@@ -76,7 +81,7 @@ vrannemstein.writeiptc = (source_url) => (new Uint8Array());
 
 This plugin comes with a built-in bulk action to request thumbnails update on demand, directly from the WP Media Library.
 
-To turn off bulk actions, filters `vrannemstein_bulk_actions` from your theme or plugin.
+To turn off bulk actions, filters `'vrannemstein_bulk_actions'` from your theme or plugin.
 
 ```php
 add_filter( 'vrannemstein_bulk_actions', '__return_false' );
