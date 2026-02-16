@@ -65,7 +65,9 @@ function config_example( $config ) {
 add_filter( 'vrannemstein_config', 'config_example' );
 ```
 
-To syncronously read and write metadata (Xmp, Exif, Iptc), use the javascript function prototype properties: `readxmp`, `readexif`, `readiptc`, and: `writexmp`, `writeexif`, `writeiptc`, respectively. Don't forget to allow configuration to read from and to keep metadata according, through config filtering `array( 'readxmp' => true, 'readexif' => true, 'readiptc' => true, 'jpegsave' => array( 'keep' => 7 ), ... )`.
+To syncronously read and write metadata (Xmp, Exif, Iptc), use the javascript function prototype properties: `readxmp`, `readexif`, `readiptc`, and: `writexmp`, `writeexif`, `writeiptc`, respectively.
+
+Don't forget to allow configuration to read from and to keep metadata according, through config filtering `array( 'readxmp' => true, 'readexif' => true, 'readiptc' => true, 'jpegsave' => array( 'keep' => 7 ), ... )`.
 
 ```js
 vrannemstein.readxmp = (xmpData, source_url) => console.log('readxmp', xmpData);
