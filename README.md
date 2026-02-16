@@ -12,7 +12,7 @@ Clone this repository in your WordPress plugins directory using `git`, or downlo
 
 From the `vrannemstein` directory, run `npm install` to download `wasm-vips`.
 
-```sh
+```
 cd wordpress/wp-content/plugins
 git clone https://github.com/ctlcltd/vrannemstein.git
 cd vrannemstein
@@ -20,7 +20,7 @@ npm install
 ```
 
 To update the plugin, using `git` and `npm`.
-```sh
+```
 cd wordpress/wp-content/plugins/vrannemstein
 git pull
 npm update
