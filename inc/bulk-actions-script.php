@@ -23,7 +23,7 @@ function vrannemstein_bulk_thumbnails() {
     let i = 0;
     for (const obj of data) {
       let source_url = mode ? obj.attributes.url : obj.src;
-      source_url = source_url.replace(/-\d+x\d+/, '');
+      source_url = source_url.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
 
       if (iter && i++ == iter)
         break;

@@ -13,7 +13,7 @@
 defined( 'ABSPATH' ) || die();
 
 /**
- * Attachment thumbnails post-processing extending WP_REST_Attachments_Controller REST API.
+ * Attachment thumbnails post-processing extending WP_REST_Attachments_Controller REST API
  *
  * @see WP_REST_Attachments_Controller
  */
@@ -22,11 +22,12 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	/** @var string $rest_base */
 	/** @var string $namespace */
 
-	/** @var string */
-	public $filename;
+	public array $registered_sizes;
+	public string $filename;
+	public int $subsizes_filter_priority = 9999; // reflects Vrannemstein class property
 
 	/**
-	 * Extends attachments controller
+	 * Extends WP_REST_Attachments_Controller
 	 */
 	public function __construct() {
 		parent::__construct( 'attachment' );
@@ -37,9 +38,6 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 
 	/**
 	 * Register routes
-	 *
-	 * @see WP_REST_Attachments_Controller::post_process_item()
-	 * @see WP_REST_Attachments_Controller::post_process_item_permissions_check()
 	 */
 	public function register_routes() {
 		register_rest_route(
@@ -48,7 +46,6 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 			array(
 				'methods' => WP_REST_Server::CREATABLE,
 				'callback' => array( $this, 'post_process_item' ),
-				//
 				'permission_callback' => array( $this, 'post_process_item_permissions_check' ),
 				'args' => array(
 					'id'=> array(
@@ -69,10 +66,9 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	 * Post process attachment item
 	 *
 	 * @see WP_REST_Attachments_Controller::post_process_item()
-	 * @see WP_REST_Attachments_Controller::prepare_item_for_response()
 	 *
 	 * @param WP_REST_Request $request The request
-	 * @return WP_REST_Response|WP_Error
+	 * @return WP_REST_Response|WP_Error $response The response
 	 */
 	public function post_process_item( $request ) {
 		switch ( $request['action'] ) {
@@ -90,11 +86,12 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	 * Uploads attachment thumbnails and updates metadata
 	 *
 	 * @see WP_REST_Attachments_Controller::upload_from_file()
+	 * @see WP_REST_Attachments_Controller::prepare_item_for_response()
 	 *
 	 * @param WP_REST_Request $request The request
 	 * @return WP_REST_Response|WP_Error
 	 */
-	public function image_subsizes( $request ) {
+	protected function image_subsizes( $request ) {
 		if ( empty( $request['id'] ) ) {
 			return new WP_Error(
 				'rest_invalid_param',
@@ -105,10 +102,12 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 
 		$files = $request->get_file_params();
 		$headers = $request->get_headers();
+		$post_data = $this->get_post_data( $request );
 		$attachment = get_post( $request['id'] );
 		$time = $attachment->post_date; // upload_dir/year/month
 		$image_file = wp_get_original_image_path( $request['id'] );
 		$image_meta = wp_get_attachment_metadata( $request['id'] );
+		$this->registered_sizes = wp_get_registered_image_subsizes();
 		$this->filename = $image_meta['file'];
 
 		if ( empty( $image_file ) || empty( $image_meta ) || ! is_array( $image_meta ) ) {
@@ -119,45 +118,42 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 			);
 		}
 
-		// return print_r([$headers, $files], true);
+		if ( is_wp_error( $error = $this->validate_files( $files) ) )
+			return $error;
+		if ( is_wp_error( $error = $this->validate_post_data( $post_data ) ) )
+			return $error;
 
 		add_filter( 'wp_unique_filename', array( $this, 'handle_filename' ), 10, 3 );
 		add_filter( 'pre_move_uploaded_file', array( $this, 'handle_upload' ), 10, 4 );
 
-		$error = null;
+		$files_data = [];
+		$sizes_data = [];
+		$error = NULL;
 
-		foreach ( $files as $i => $file ) {
-			//
-			//TODO pre check ?
-			$data[ $i ] = $this->upload_from_file( array( 'file' => $file ), $headers, $time );
+		foreach ( $files as $size_name => $file ) {
+			$file = $this->upload_from_file( array( 'file' => $file ), $headers, $time );
 
-			if ( is_wp_error( $data[ $i ] ) ) {
-				$error = $data[ $i ];
+			if ( is_wp_error( $file ) ) {
+				$error = $file;
 				break;
 			}
+			$files_data[ $size_name ] = $file;
+			$sizes_data[ $size_name ] = $post_data[ $size_name ];
 		}
 
 		remove_filter( 'wp_unique_filename', array( $this, 'handle_filename' ), 10 );
 		remove_filter( 'pre_move_uploaded_file', array( $this, 'handle_upload', ), 10 );
 
-		if ( is_wp_error( $error ) ) {
-			foreach ( $data as $file ) {
-				if ( ! empty( $file['file'] ) )
-					@unlink( $file['file'] );
-			}
-
+		if ( $error )
 			return $error;
-		}
 
 		// Require image functions from wp-admin
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 
-		$new_sizes = wp_get_registered_image_subsizes();
-
-		// remove_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', 9999 );
+		remove_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', $this->subsizes_filter_priority );
 		/** This filter is documented in wp-admin/includes/image.php */
-		// $new_sizes = apply_filters( 'intermediate_image_sizes_advanced', $new_sizes, $image_meta, $request['id'] );
-		// add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', 9999 );
+		$new_sizes = apply_filters( 'intermediate_image_sizes_advanced', $this->registered_sizes, $image_meta, $request['id'] );
+		add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', $this->subsizes_filter_priority );
 
 		if ( isset( $image_meta['sizes'] ) && is_array( $image_meta['sizes'] ) ) {
 			foreach ( $image_meta['sizes'] as $size_name => $size_meta ) {
@@ -169,50 +165,35 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 			$image_meta['sizes'] = array();
 		}
 
-		if ( empty( $new_sizes ) ) {
-			//
-			return false;
-		}
-
 		foreach ( $new_sizes as $size_name => $size_data ) {
 			if ( ! isset( $size_data['width'] ) && ! isset( $size_data['height'] ) )
 				continue;
 
-			if (0) {
-				// error
-				return false;
-			} else {
+			if ( isset( $files_data[ $size_name ] ) && file_exists( $files_data[ $size_name ]['file'] ) ) {
 				$size_meta = array(
-					//
-					'path' => 'todo-' . $size_name,
+					'path' => $files_data[ $size_name ]['file'],
 					/** This filter is documented in wp-includes/class-wp-image-editor-gd.php */
-					'file' => wp_basename( apply_filters( 'image_make_intermediate_size', 'todo' ) ),
-					'width' => $size_data['width'], // dst_w
-					'height' => $size_data['height'], // dst_h
-					'mime-type' => '',
-					'filesize' => 0
-					//
+					'file' => wp_basename( apply_filters( 'image_make_intermediate_size', $files_data[ $size_name ]['file'] ) ),
+					'width' => $sizes_data[ $size_name ]['dst_w'],
+					'height' => $sizes_data[ $size_name ]['dst_h'],
+					'mime-type' => $files_data[ $size_name ]['type'],
+					'filesize' => wp_filesize( $files_data[ $size_name ]['file'] )
 				);
-			}
 
-			if (0) {
 				unset( $size_meta['path'] );
 				$image_meta['sizes'][ $size_name ] = $size_meta;
 
-				// wp_update_attachment_metadata( $request['id'], $image_meta );
-			} else {
-				$image_meta['missing_image_sizes'][ $size_name ] = $size_meta;
-
-				if ( wp_is_serving_rest_request() ) {
-					header( 'X-WP-Upload-Attachment-ID: ' . $attachment_id );
-				}
+				wp_update_attachment_metadata( $request['id'], $image_meta );
 			}
 		}
+
+		if ( wp_is_serving_rest_request() )
+			header( 'X-WP-Upload-Attachment-ID: ' . $request['id'] );
 
 		/** This filter is documented in wp-admin/includes/image.php */
 		$image_meta = apply_filters( 'wp_generate_attachment_metadata', $image_meta, $request['id'], 'update' );
 
-		// wp_update_attachment_metadata( $attachment_id, $image_meta );
+		wp_update_attachment_metadata( $attachment_id, $image_meta );
 
 		$attachment = get_post( $request['id'] );
 		$response = $this->prepare_item_for_response( $attachment, $request );
@@ -226,16 +207,16 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	 *
 	 * @see wp_unique_filename()
 	 *
+	 * @param string $filename
 	 * @param string $ext
 	 * @param string $dir
 	 * @return string $filename 
 	 */
 	public function handle_filename( $filename, $ext, $dir ) {
-		//
-		return $filename;
-		$origin_filename = basename( $this->filename );
+		if ( file_exists( $dir . '/' . basename( $this->filename ) ) )
+			$filename = preg_replace( '/-\d+(\.[^\.]+)$/', '$1', $filename, 1 );
 
-		return file_exists( $dir . $origin_filename ) ? $filename : $origin_filename;
+		return $filename;
 	}
 
 	/**
@@ -253,11 +234,9 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	 * }
 	 * @param string $new_file
 	 * @param string $type
+	 * @return null|bool
 	 */
 	public function handle_upload( $move_new_file, $file, $new_file, $type ) {
-		//
-		// return $move_new_file;
-		return false; //todo testing
 		switch ( $type ) {
 			case 'image/jpeg':
 			case 'image/gif':
@@ -269,7 +248,104 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 				return false;
 		}
 
-		return ( $new_file === $this->filename ) ? $move_new_file : false;
+		$new_file = preg_replace( '/-\d+x\d+(\.[^\.]+)$/', '$1', $new_file, 1 );
+
+		return strrpos( $new_file, $this->filename ) !== false ? $move_new_file : false;
+	}
+
+	/**
+	 * Post process item permissions check
+	 *
+	 * @see WP_REST_Attachments_Controller::post_process_item_permissions_check()
+	 * @see WP_REST_Attachments_Controller::edit_media_item_permissions_check()
+	 *
+	 * @param WP_REST_Request $request The request
+	 * @return true|WP_Error
+	 */
+	public function post_process_item_permissions_check( $request ) {
+		return $this->edit_media_item_permissions_check( $request );
+	}
+
+	/**
+	 * Gets post data
+	 *
+	 * @param WP_REST_Request $request The request
+	 * @return array Post data array
+	 */
+	protected function get_post_data( $request ) {
+		return json_decode( $request->get_param( 'data' ), true );
+	}
+
+	/**
+	 * Validates files
+	 *
+	 * @param array $value Files array
+	 * @return true|WP_Error
+	 */
+	protected function validate_files( $value ) {
+		foreach ( $value as $size_name => $file ) {
+			$size_name = sanitize_key( $size_name );
+
+			if ( ! array_key_exists( $size_name, $this->registered_sizes ) ) {
+				return new WP_Error(
+					'rest_invalid_param',
+					sprintf( __( 'Invalid parameter(s): %s' ), 'size_name' ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		return true;
+	}	
+
+	/**
+	 * Validates post data
+	 *
+	 * @param array|null $value Post data array
+	 * @return true|WP_Error
+	 */
+	protected function validate_post_data( $value ) {
+		if ( $value === NULL ) {
+			return new WP_Error(
+				'rest_invalid_param',
+				sprintf( __( '%s parameter must be a valid JSON string.' ), 'data' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$invalid_params = array();
+
+		foreach ( $value as $size_name => $size_data ) {
+			$size_name = sanitize_key( $size_name );
+
+			if ( ! array_key_exists( $size_name, $this->registered_sizes ) ) {
+				$invalid_params[] = 'size_name';
+				continue;
+			}
+
+			list( $width, $height, $crop ) = $this->registered_sizes[ $size_name ];
+
+			if ( is_int( $size_data['dst_w'] ) && $width != 0 && $size_data['dst_w'] === $width )
+				$invalid_params[ $size_name ][] = 'dst_w';
+			if ( is_int( $size_data['dst_h'] ) && $height != 0 && $size_data['dst_h'] === $height )
+				$invalid_params[ $size_name ][] = 'dst_h';
+			if ( is_bool( $size_data['crop'] ) && $size_data['crop'] === $crop )
+				$invalid_params[ $size_name ][] = 'crop';
+			if ( is_int( $size_data['src_w'] ) && ! $size_data['src_w'] )
+				$invalid_params[ $size_name ][] = 'src_w';
+			if ( is_int( $size_data['src_h'] ) && ! $size_data['src_h'] )
+				$invalid_params[ $size_name ][] = 'src_h';
+		}
+
+		if ( ! empty( $invalid_params ) ) {
+			return new WP_Error(
+				'rest_invalid_param',
+				sprintf( __( 'Invalid parameter(s): %s' ), implode( ', ', array_keys( $invalid_params ) ) ),
+				array( 'status' => 400, 'params'  => $invalid_params )
+			);
+		}
+
+		return true;
 	}
 }
 

@@ -107,6 +107,9 @@ async function vrannemstein(images) {
     if (crop)
       thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop);
 
+    if (writeOpts.keep && (writeOpts.keep & 1))
+      thumb = thumb.copy({xres: 72 / 25.4, yres: 72 / 25.4}); // px/mm
+
     if (xmpData) {
       if (xmpData instanceof Uint8Array) {
         thumb.setBlob('xmp-data', xmpData);
@@ -116,14 +119,11 @@ async function vrannemstein(images) {
       }
     }
     if (exifData) {
-      thumb = thumb.copy({xres: 72 / 25.4, yres: 72 / 25.4}); // px/mm
-
       const fields = thumb.getFields();
       for (let i = 0; i < fields.size(); i++) {
         if (/exif-/.test(fields.get(i)))
           thumb.remove(fields.get(i))
       }
-
       if (exifData instanceof Uint8Array) {
         thumb.setBlob('exif-data', exifData);
       } else if (exifData instanceof Object) {
@@ -199,18 +199,6 @@ async function vrannemstein(images) {
         vrannemstein.readiptc.call(this, iptcData, source_url);
       // console.log(iptcData, iptc);
     }
-  
-    //
-    // 200x200 shrink: 1.5, jpeg: 4
-    // return thumbnail(blob, writeOpts, 'test', {
-    //   mime,
-    //   extname,
-    //   src_w: source.width,
-    //   src_h: source.height,
-    //   dst_w: 200,
-    //   dst_h: 200,
-    //   crop: false
-    // });
 
     const image_sizes = options.image_sizes;
     const thumbs = {};
@@ -250,18 +238,9 @@ async function vrannemstein(images) {
       }
 
       const fname = filename.replace(/(\.[^\.]+)$/, `-${dst_w}x${dst_h}$1`);
-      const thumb = await thumbnail(blob, writeOpts, name, {
-        source_url,
-        mime,
-        extname,
-        src_w,
-        src_h,
-        dst_w,
-        dst_h,
-        crop
-      });
-
-      thumbs[size] = {blob: thumb, mime, filename: fname};
+      const data = {src_w, src_h, dst_w, dst_h, crop};
+      const thumb = await thumbnail(blob, writeOpts, name, {source_url, mime, extname, ...data});
+      thumbs[size] = {blob: thumb, mime, filename: fname, data};
     };
 
     return {source_url, thumbs};
@@ -269,13 +248,17 @@ async function vrannemstein(images) {
 
   const p = [];
   for (const source_url of images) {
+    if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(source_url)) {
+      error('Not supported file format.');
+      continue;
+    }
     p.push(
       new Promise((resolve, reject) => {
-        fetch(source_url)
+        fetch(source_url, {mode: 'same-origin'})
         .then((response) => {
-            if (! response.ok) {
+            if (! response.ok)
               throw new Error(`HTTP Error status: ${response.status}`);
-            }
+
             return response.arrayBuffer();
         })
         .catch(err => reject(err))

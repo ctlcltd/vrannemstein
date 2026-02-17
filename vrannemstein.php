@@ -8,20 +8,24 @@
  * Plugin Name: Vrannemstein
  * Plugin URI: https://github.com/ctlcltd/vrannemstein
  * Description: Image thumbnails using wasm-vips via the client side.
+ * Update URI: false
+ * Requires at least: 6.7
+ * Requires PHP: 8.3
  * Version: 0.0.1
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.txt
-*/
+ */
 
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	public $version = '0.0.1';
-	public $wasm_vips_version = '0.0.16'; // reflects package.json version
+	const string VERSION = '0.0.1';
+	const string WASM_VIPS_VERSION = '0.0.16'; // reflects package.json version
 
-	public $queue_priority = 9999; // higher scripts enqueue priority
+	public int $queue_priority = 9999; // higher scripts enqueue priority
+	public int $subsizes_filter_priority = 9999; // higher intermediate image sizes filter priority
 
 	public function __construct() {
 		add_action( 'rest_api_init', array( $this, 'rest_api' ) );
@@ -39,12 +43,31 @@ class Vrannemstein {
 		if ( apply_filters( 'vrannemstein_bulk_actions', '__return_true' ) ) {
 			add_action( 'load-upload.php', array( $this, 'bulk_actions' ) );
 		}
+
+		/**
+		 * 'intermediate_image_sizes_advanced'
+		 *
+		 * This filter turns off image subsize generation.
+		 * 
+		 * @see wp_create_image_subsizes()
+		 *
+		 * @param array $new_sizes
+		 * @param array $image_meta
+		 * @param int $attachment_id
+		 * @return array
+		 */
+		add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', $this->subsizes_filter_priority );
 	}
 
 	static function init() {
 		static $init = 0 ?: new Vrannemstein();
 	}
 
+	/**
+	 * Thumbnailer configuration
+	 *
+	 * @return array Script options
+	 */
 	public function thumbnailer_config() {
 		/**
 		 * Filters thumbnailer configuration
@@ -192,6 +215,7 @@ class Vrannemstein {
 
 		$controller = new Vrannemstein_REST_Controller();
 		$controller->register_routes();
+		$controller->subsizes_filter_priority =& $this->subsizes_filter_priority;
 	}
 
 	public function enqueue_scripts() {
@@ -199,14 +223,9 @@ class Vrannemstein {
 		wp_add_inline_script( 'vrannemstein', 'var vrannemstein_config = ' . wp_json_encode( $this->thumbnailer_config() ), 'before' );
 		wp_enqueue_script( 'vrannemstein' );
 
-		wp_enqueue_script( 'wasm-vips', plugins_url( 'node_modules/wasm-vips/lib/vips.js', __FILE__ ), false, $this->wasm_vips_version, true );
+		wp_enqueue_script( 'wasm-vips', plugins_url( 'node_modules/wasm-vips/lib/vips.js', __FILE__ ), false, $this::WASM_VIPS_VERSION, true );
 	}
 }
 
 add_action( 'init', '\Vrannemstein::init' );
-
-
-//TODO filterable ( $new_sizes, $image_meta, $attachment_id )
-add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', 9999, 3 );
-
 

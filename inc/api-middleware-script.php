@@ -6,6 +6,7 @@
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  *
+ * @api
  * @todo
  */
 
@@ -13,7 +14,7 @@ defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-api-middleware-script">
 const vrannemsteinThumbnailerMiddleware = (options, next) => {
-  const debug = false; // todo
+  const debug = 0; // todo
 
   const isCreateMethod = !!options.method && options.method === 'POST';
   const isMediaEndpoint = !!options.path && options.path.indexOf('/wp/v2/media') !== -1 || !!options.url && options.url.indexOf('/wp/v2/media') !== -1;
@@ -26,10 +27,10 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
 
   let $post = null;
   let attempts = 0;
-  //todo l10n from wp
+  const wp_i18n = wp.i18n;
   const messages = {
-    'ERR_POST': {code: 'post_process', message: 'ERR_POST'},
-    'ERR_JSON': {code: 'invalid_json', message: 'ERR_JSON'}
+    'ERR_POST': {code: 'post_process', message: wp_i18n.__('Media upload failed. If this is a photo or a large image, please scale it down and try again.')},
+    'ERR_JSON': {code: 'invalid_json', message: wp_i18n.__('The response is not a valid JSON response.')}
   };
 
   const postProcess = (attachmentId, attachment) => {
@@ -41,13 +42,23 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
       vrannemstein([attachment.source_url])
       .then((imgs) => {
         const img = imgs[0];
-        if (img.source_url != attachment.source_url) return;
-
-        for (const size in img.thumbs) {
-          const {blob, type, filename} = img.thumbs[size];
-          body.append(size, new Blob([blob], {type}), filename);
+        const data = {};
+        if (img.source_url != attachment.source_url) {
+          console.warn('URL mismatch.');
+          return reject();
         }
-        resolve();
+        try {
+          for (const size in img.thumbs) {
+            const {blob, type, filename} = img.thumbs[size];
+            body.append(size, new Blob([blob], {type}), filename);
+            data[size] = img.thumbs[size].data;
+          }
+          body.append('data', JSON.stringify(data));
+          resolve();
+        } catch (err) {
+          console.warn('Internal Error.', err);
+          reject();
+        }
       })
       .catch(reject);
     });
@@ -67,7 +78,7 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
 
           if (! attempts) {
             postProcess(attachmentId, post);
-            resolve(response);
+            return resolve(response);
           }
           reject(response);
         });
@@ -76,7 +87,7 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
 
         if (! attempts) {
           postProcess(attachmentId, attachment);
-          resolve(response);
+          return resolve(response);
         }
         reject(response);
       });
@@ -92,6 +103,9 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
         response.json().then((attachment) => {
           debug && console.log('vrannemsteinThumbnailerMiddleware', 'next.then', 'json.then', {attachment});
 
+          if (attachment.media_type != 'image')
+            return Promise.resolve(next);
+
           const attachmentId = attachment.id;
           $post = attachment;
 
@@ -101,7 +115,7 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
             if (options.parse)
               response.json().then(reject);
             else
-              reject(messages.ERR_POST);
+              reject(response);
           });
         });
       } catch {
@@ -114,11 +128,11 @@ const vrannemsteinThumbnailerMiddleware = (options, next) => {
 
     return new Promise((resolve, reject) => {
       try {
-        //todo integer
+        //todo
         const attachmentId = response.headers.get('x-wp-upload-attachment-id');
 
         if (attachmentId && attachmentId != $post.id)
-          reject(messages.ERR_POST);
+          return reject(messages.ERR_POST);
 
         if (response.status >= 500 && response.status < 600) {
           postProcess(attachmentId, $post)
