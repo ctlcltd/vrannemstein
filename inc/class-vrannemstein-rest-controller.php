@@ -34,6 +34,8 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 		
 		$this->rest_base = 'attachment';
 		$this->namespace = 'vrannemstein/v2';
+
+		add_filter( 'wp_prevent_unsupported_mime_type_uploads', array( $this, 'rest_api_image_editor_supports_compat' ), 10, 2 );
 	}
 
 	/**
@@ -198,6 +200,8 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 		$attachment = get_post( $request['id'] );
 		$response = $this->prepare_item_for_response( $attachment, $request );
 		$response = rest_ensure_response( $response );
+		//
+		// $response->set_status( 502 ); // testing
 
 		return $response;
 	}
@@ -264,6 +268,21 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 	 */
 	public function post_process_item_permissions_check( $request ) {
 		return $this->edit_media_item_permissions_check( $request );
+	}
+
+	/**
+	 * REST API image editor supports mime-type compatibility
+	 *
+	 * @see WP_REST_Attachments_Controller::create_item_permissions_check()
+	 *
+	 * @param bool $check_mime
+	 * @param string|null $mime_type Image mime type
+	 * @return bool Prevent uploads of unsupported images type
+	 */
+	public function rest_api_image_editor_supports_compat( $check_mime, $mime_type ) {
+		if ( $mime_type === 'image/webp' || $mime_type === 'image/avif' )
+			return false;
+		return $check_mime;
 	}
 
 	/**

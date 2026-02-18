@@ -12,7 +12,7 @@
 defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-bulk-actions-script">
-function vrannemstein_bulk_thumbnails() {
+function vrannemsteinBulkThumbnails() {
   const mode = wp.media ? 1 : 0; // (0 list, 1 grid)
 
   //
@@ -125,6 +125,7 @@ function vrannemstein_bulk_thumbnails() {
       toolbar.secondary.views.add(button, {at: -2});
 
     controller.on('select:activate select:deactivate', toggler, frame);
+    controller.off('select:activate select:deactivate', toggler, frame);
 
     //
     frame.on('select:activate', () => console.log('activate'), frame);
@@ -147,7 +148,7 @@ function vrannemstein_bulk_thumbnails() {
     wp.media && wp.media.frame && wp.media.frames.browse && wp.media.frames.browse.browserView.collection.once( 'attachments:received', vrannemstein_bulk_thumbnails );
   });
 
-  wp.media || vrannemstein_bulk_thumbnails();
+  wp.media || vrannemsteinBulkThumbnails();
 })(wp, jQuery);
 </script>
 

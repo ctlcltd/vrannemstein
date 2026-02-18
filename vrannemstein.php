@@ -9,7 +9,7 @@
  * Plugin URI: https://github.com/ctlcltd/vrannemstein
  * Description: Image thumbnails using wasm-vips via the client side.
  * Update URI: false
- * Requires at least: 6.7
+ * Requires at least: 6.8
  * Requires PHP: 8.3
  * Version: 0.0.1
  * Author: Leonardo Laureti
@@ -34,6 +34,7 @@ class Vrannemstein {
 		add_action( 'load-post.php', array( $this, 'backend' ) );
 		add_action( 'load-post-new.php', array( $this, 'backend' ) );
 		add_action( 'load-upload.php', array( $this, 'backend' ) );
+		add_action( 'load-media-new.php', array( $this, 'backend' ) );
 
 		/**
 		 * Filter to allow bulk actions generate thumbnails
@@ -57,6 +58,8 @@ class Vrannemstein {
 		 * @return array
 		 */
 		add_filter( 'intermediate_image_sizes_advanced', '__return_empty_array', $this->subsizes_filter_priority );
+
+		add_filter( 'plupload_default_settings', array( $this, 'plupload_image_editor_supports_compat' ) );
 	}
 
 	static function init() {
@@ -170,7 +173,7 @@ class Vrannemstein {
 
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ), $this->queue_priority );
 		add_action( 'admin_print_footer_scripts', array( $this, 'thumbnailer_script' ), $this->queue_priority );
-		add_action( 'admin_print_footer_scripts', array( $this, 'api_middleware_script' ), $this->queue_priority );
+		add_action( 'admin_print_footer_scripts', array( $this, 'postprocess_script' ), $this->queue_priority );
 	}
 
 	public function bulk_actions() {
@@ -185,7 +188,7 @@ class Vrannemstein {
 	 *
 	 * @see WP_List_Table
 	 *
-	 * @param array $actions
+	 * @param array $actions Bulk actions for media view
 	 * @return array $actions
 	 */
 	public function bulk_actions_generate_thumbnails( $actions ) {
@@ -193,14 +196,39 @@ class Vrannemstein {
 		return $actions;
 	}
 
+	/**
+	 * WP-Plupload image editor supports mime-type compatibility
+	 *
+	 * @see wp_plupload_default_settings()
+	 *
+	 * @param array $defaults WP-Plupload default settings
+	 * @return array $defaults
+	 */
+	public function plupload_image_editor_supports_compat( $defaults ) {
+		if ( isset( $defaults['webp_upload_error'] ) )
+			unset( $defaults['webp_upload_error'] );
+		if ( isset( $defaults['avif_upload_error'] ) )
+			unset( $defaults['avif_upload_error'] );
+		return $defaults;
+	}
+
+	/**
+	 * The thumbnailer script
+	 */
 	public function thumbnailer_script() {
 		include_once __DIR__ . '/inc/thumbnailer-script.php';
 	}
 
-	public function api_middleware_script() {
-		include_once __DIR__ . '/inc/api-middleware-script.php';
+	/**
+	 * Post-processing script: WP apiFetch middleware, editors and uploader
+	 */
+	public function postprocess_script() {
+		include_once __DIR__ . '/inc/postprocess-script.php';
 	}
 
+	/**
+	 * Bulk actions script: WP Media Library
+	 */
 	public function bulk_actions_script() {
 		include_once __DIR__ . '/inc/bulk-actions-script.php';
 	}
