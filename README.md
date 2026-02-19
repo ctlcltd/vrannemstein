@@ -4,7 +4,7 @@ Vrannemstein is a WordPress plugin to make image thumbnails via the client-side.
 
 It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) (vips image processing library).
 
-🚧 *Under development* 🚧
+*Under testing*
 
 ## Usage
 
@@ -70,9 +70,9 @@ To syncronously read and write metadata (Xmp, Exif, Iptc), use the javascript fu
 Don't forget to allow configuration to read from and to keep metadata according, through config filtering `array( 'readxmp' => true, 'readexif' => true, 'readiptc' => true, 'jpegsave' => array( 'keep' => 7 ), ... )`.
 
 ```js
-vrannemstein.readxmp = (xmpData, source_url) => console.log('readxmp', xmpData);
-vrannemstein.readexif = (exifData, source_url) => console.log('readexif', exifData);
-vrannemstein.readiptc = (iptcData, source_url) => console.log('readiptc', iptcData);
+vrannemstein.readxmp = (xmpData, source_url) => console.log('readxmp', xmpData, source_url);
+vrannemstein.readexif = (exifData, source_url) => console.log('readexif', exifData, source_url);
+vrannemstein.readiptc = (iptcData, source_url) => console.log('readiptc', iptcData, source_url);
 
 vrannemstein.writexmp = (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>';
 vrannemstein.writeexif = (source_url) => ({ IFD2: { UserComment: 'test' } });

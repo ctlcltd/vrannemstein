@@ -10,22 +10,105 @@
 defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-thumbnailer-script">
-async function vrannemstein(images) {
+/**
+ * @global
+ * @async
+ * @constructor
+ * @external 'vrannemstein_config'
+ * @param {array} images
+ * @param {boolean} batch
+ */
+async function vrannemstein(images, batch) {
+  const $fn = vrannemstein;
   const options = vrannemstein_config;
 
-  Object.defineProperties(vrannemstein, {
-    readxmp: { configurable: options.readXmp, writable: true, value: (xmpData) => undefined },
-    readexif: { configurable: options.readExif, writable: true, value: (exifData) => undefined },
-    readiptc: { configurable: options.readIptc, writable: true, value: (iptcData) => undefined },
-    writexmp: { writable: true, value: () => undefined },
-    writeexif: { writable: true, value: () => undefined },
-    writeiptc: { writable: true, value: () => undefined }
+  Object.defineProperties($fn, {
+    /**
+     * @public
+     * @virtual
+     * @member {Function} readxmp
+     * @param {string} xmpData
+     * @param {string} source_url
+     */
+    readxmp: {
+      configurable: options.readXmp,
+      writable: true,
+      value: $fn.readxmp instanceof Function ? $fn.readxmp : (xmpData, source_url) => undefined
+    },
+    /**
+     * @public
+     * @virtual
+     * @member {Function} readexif
+     * @param {string} exifData
+     * @param {string} source_url
+     */
+    readexif: {
+      configurable: options.readExif,
+      writable: true,
+      value: $fn.readexif instanceof Function ? $fn.readexif : (exifData, source_url) => undefined
+    },
+    /**
+     * @public
+     * @virtual
+     * @member {Function} readiptc
+     * @param {string} iptcData
+     * @param {string} source_url
+     */
+    readiptc: {
+      configurable: options.readIptc,
+      writable: true,
+      value: $fn.readiptc instanceof Function ? $fn.readiptc : (iptcData, source_url) => undefined
+    },
+    /**
+     * @public
+     * @virtual
+     * @member {Function} writexmp
+     * @param {string} source_url
+     */
+    writexmp: {
+      writable: true,
+      value: $fn.writexmp instanceof Function ? $fn.writexmp : (source_url) => undefined
+    },
+    /**
+     * @public
+     * @virtual
+     * @member {Function} writexmp
+     * @param {string} source_url
+     */
+    writeexif: {
+      writable: true,
+      value: $fn.writeexif instanceof Function ? $fn.writeexif : (source_url) => undefined
+    },
+    /**
+     * @public
+     * @virtual
+     * @member {Function} writeiptc
+     * @param {string} source_url
+     */
+    writeiptc: {
+      writable: true,
+      value: $fn.writeiptc instanceof Function ? $fn.writeiptc : (source_url) => undefined
+    }
   });
   const log = (...message) => (options.verbosity & 1) && console.log.call(console, ...message);
   const info = (...message) => (options.verbosity & 2) && console.info.call(console, ...message);
   const error = (...message) => (options.verbosity & 4) && console.error.call(console, ...message);
 
-  const vips = await Vips({
+  /**
+   * @private
+   * @async
+   * @external Vips
+   * @external 'vrannemstein.$vips'
+   */
+  const $vips = async(options) => {
+    if (batch && $fn.$vips)
+      return $fn.$vips;
+    else if (batch)
+      return $fn.$vips = Vips(options);
+    else
+      return Vips(options);
+  };
+  const vips = await $vips({
     dynamicLibraries: options.dynamicLibraries,
     noImageDecoding: options.noImageDecoding,
     preRun: (module) => {
@@ -38,6 +121,13 @@ async function vrannemstein(images) {
 
   log('vips loaded', vips.version());
 
+  /**
+   * @private
+   * @param {ArrayBuffer} blob
+   * @param {string} type
+   * @param {string} name
+   * @return {URL}
+   */
   function tourl(blob, type, name) {
     const obj = URL.createObjectURL(new Blob([blob], {type}));
     const a = document.createElement('a');
@@ -47,6 +137,15 @@ async function vrannemstein(images) {
     return obj;
   }
 
+  /**
+   * @private
+   * @param {number} src_w
+   * @param {number} src_h
+   * @param {number} dst_w
+   * @param {number} dst_h
+   * @param {boolean} crop
+   * @return {object}
+   */
   function shrinking(src_w, src_h, dst_w, dst_h, crop) {
     let hshrink = 1.0;
     let vshrink = 1.0;
@@ -72,6 +171,11 @@ async function vrannemstein(images) {
     return {hshrink, vshrink, shrink};
   }
 
+  /**
+   * @private
+   * @param {number} shrink
+   * @return {number}
+   */
   function jpegShrink(shrink) {
     let s = 1;
     if (shrink >= 8 * s) s = 8;
@@ -81,13 +185,21 @@ async function vrannemstein(images) {
     return s;
   }
 
+  /**
+   * @private
+   * @async
+   * @param {ArrayBuffer} blob
+   * @param {object} writeOpts
+   * @param {string} name
+   * @param {object} data
+   */
   async function thumbnail(blob, writeOpts, name, data) {
     const {source_url, mime, extname, src_w, src_h, dst_w, dst_h, crop} = data;
     let readOpts = {};
 
-    const xmpData = vrannemstein.writexmp instanceof Function ? vrannemstein.writexmp(source_url) : null;
-    const exifData = vrannemstein.writeexif instanceof Function ? vrannemstein.writeexif(source_url) : null;
-    const iptcData = vrannemstein.writeiptc instanceof Function ? vrannemstein.writeiptc(source_url) : null;
+    const xmpData = $fn.writexmp instanceof Function ? $fn.writexmp(source_url) : null;
+    const exifData = $fn.writeexif instanceof Function ? $fn.writeexif(source_url) : null;
+    const iptcData = $fn.writeiptc instanceof Function ? $fn.writeiptc(source_url) : null;
 
     if (/image\/jpeg/.test(mime)) {
       let {shrink} = shrinking(src_w, src_h, dst_w, dst_h, crop);
@@ -141,13 +253,19 @@ async function vrannemstein(images) {
     log('thumbnail', name, {w: thumb.width, h: thumb.height});
 
     const out = thumb.writeToBuffer(extname, writeOpts);
-
     thumb = null;
-    // return tourl(out, mime, name);
+    // return tourl(out, mime, name); // testing
 
     return out;
   }
 
+  /**
+   * @private
+   * @async
+   * @param {string} source_url
+   * @param {ArrayBuffer} blob
+   * @return {object}
+   */
   async function image(source_url, blob) {
     const filename = source_url.replace(/.+\/([^/]+)/, '$1');
     const extname = filename.replace(/.+(\.[^\.]+)$/, '$1');
@@ -179,32 +297,28 @@ async function vrannemstein(images) {
     if (options.readXmp && source.getTypeof('xmp-data') != 0) {
       const xmp_data = source.getBlob('xmp-data');
       const xmpData = String.fromCodePoint(...xmp_data);
-      if (vrannemstein.readxmp instanceof Function)
-        vrannemstein.readxmp.call(this, xmpData, source_url);
-      // console.log(xmpData, xmp);
+      if ($fn.readxmp instanceof Function)
+        $fn.readxmp.call(this, xmpData, source_url);
     }
     // libvips header.h  VIPS_META_EXIF_NAME "exif-data"
     if (options.readExif && source.getTypeof('exif-data') != 0) {
       const exif_data = source.getBlob('exif-data');
       const exifData = String.fromCodePoint(...exif_data);
-      if (vrannemstein.readexif instanceof Function)
-        vrannemstein.readexif.call(this, exifData, source_url);
-      // console.log(exifData, exif);
+      if ($fn.readexif instanceof Function)
+        $fn.readexif.call(this, exifData, source_url);
     }
     // libvips header.h  VIPS_META_IPTC_NAME "iptc-data"
     if (options.readIptc && source.getTypeof('iptc-data') != 0) {
       const iptc_data = source.getBlob('iptc-data');
       const iptcData = String.fromCodePoint(...iptc_data);
-      if (vrannemstein.readiptc instanceof Function)
-        vrannemstein.readiptc.call(this, iptcData, source_url);
-      // console.log(iptcData, iptc);
+      if ($fn.readiptc instanceof Function)
+        $fn.readiptc.call(this, iptcData, source_url);
     }
 
     const image_sizes = options.image_sizes;
     const thumbs = {};
 
-    //todo
-    // medium == medium-large to skip
+    //todo medium == medium-large to skip
     for (const size in image_sizes) {
       const {width: mw, height: mh, crop} = image_sizes[size];
       const name = `${filename}[${size}]`;
@@ -271,16 +385,36 @@ async function vrannemstein(images) {
   return Promise.all(p);
 }
 
-/*Object.defineProperty(vrannemstein, 'readxmp', {
-  value: (xmpData, source_url) => console.log('readxmp', xmpData, source_url)
-});*/
+// Object.defineProperty(vrannemstein, 'readxmp', {
+//   configurable: true,
+//   value: (xmpData, source_url) => console.log('readxmp', xmpData, source_url)
+// });
+// Object.defineProperty(vrannemstein, 'readexif', {
+//   configurable: true,
+//   value: (exifData, source_url) => console.log('readexif', exifData, source_url)
+// });
+// Object.defineProperty(vrannemstein, 'readiptc', {
+//   configurable: true,
+//   value: (iptcData, source_url) => console.log('readiptc', iptcData, source_url)
+// });
+// Object.defineProperty(vrannemstein, 'writexmp', {
+//   configurable: true,
+//   value: (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>'
+// });
+// Object.defineProperty(vrannemstein, 'writeexif', {
+//   configurable: true,
+//   value: (source_url) => ({IFD2: {UserComment: 'test'}})
+// });
+// Object.defineProperty(vrannemstein, 'writeiptc', {
+//   configurable: true,
+//   value: (source_url) => (new Uint8Array())
+// });
 
-/*Object.defineProperty(vrannemstein, 'writexmp', {
-  value: (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>'
-});*/
-
-/*Object.defineProperty(vrannemstein, 'writeexif', {
-  value: (source_url) => ({IFD2: {UserComment: 'test'}})
-});*/
+// vrannemstein.readxmp = (xmpData, source_url) => console.log('readxmp', xmpData, source_url);
+// vrannemstein.readexif = (exifData, source_url) => console.log('readexif', exifData, source_url);
+// vrannemstein.readiptc = (iptcData, source_url) => console.log('readiptc', iptcData, source_url);
+// vrannemstein.writexmp = (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>';
+// vrannemstein.writeexif = (source_url) => ({ IFD2: { UserComment: 'test' } });
+// vrannemstein.writeiptc = (source_url) => (new Uint8Array());
 </script>
 

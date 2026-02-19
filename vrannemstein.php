@@ -11,7 +11,7 @@
  * Update URI: false
  * Requires at least: 6.8
  * Requires PHP: 8.3
- * Version: 0.0.1
+ * Version: 0.1.0
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	const string VERSION = '0.0.1';
+	const string VERSION = '0.1.0';
 	const string WASM_VIPS_VERSION = '0.0.16'; // reflects package.json version
 
 	public int $queue_priority = 9999; // higher scripts enqueue priority

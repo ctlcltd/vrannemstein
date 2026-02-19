@@ -5,9 +5,7 @@
  * @package vrannemstein
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
- *
  * @api
- * @todo
  */
 
 defined( 'ABSPATH' ) || die();
