@@ -3,6 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
+ * @version 0.1.1
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -11,57 +12,65 @@ defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-thumbnailer-script">
 /**
+ * @public
  * @global
  * @async
  * @constructor
- * @external 'vrannemstein_config'
  * @param {array} images
  * @param {boolean} batch
  */
 async function vrannemstein(images, batch) {
   const $fn = vrannemstein;
+  /**
+   * @external vrannemstein_config
+   * @see globalThis.vrannemstein_config
+   */
   const options = vrannemstein_config;
 
   Object.defineProperties($fn, {
     /**
      * @public
      * @virtual
+     * @memberOf vrannemstein
      * @member {Function} readxmp
      * @param {string} xmpData
      * @param {string} source_url
      */
     readxmp: {
-      configurable: options.readXmp,
+      configurable: options.readXmp || false,
       writable: true,
       value: $fn.readxmp instanceof Function ? $fn.readxmp : (xmpData, source_url) => undefined
     },
     /**
      * @public
      * @virtual
+     * @memberOf vrannemstein
      * @member {Function} readexif
      * @param {string} exifData
      * @param {string} source_url
      */
     readexif: {
-      configurable: options.readExif,
+      configurable: options.readExif || false,
       writable: true,
       value: $fn.readexif instanceof Function ? $fn.readexif : (exifData, source_url) => undefined
     },
     /**
      * @public
      * @virtual
+     * @memberOf vrannemstein
      * @member {Function} readiptc
      * @param {string} iptcData
      * @param {string} source_url
      */
     readiptc: {
-      configurable: options.readIptc,
+      configurable: options.readIptc || false,
       writable: true,
       value: $fn.readiptc instanceof Function ? $fn.readiptc : (iptcData, source_url) => undefined
     },
     /**
      * @public
      * @virtual
+     * @memberOf vrannemstein
      * @member {Function} writexmp
      * @param {string} source_url
      */
@@ -72,7 +81,8 @@ async function vrannemstein(images, batch) {
     /**
      * @public
      * @virtual
-     * @member {Function} writexmp
+     * @memberOf vrannemstein
+     * @member {Function} writeexif
      * @param {string} source_url
      */
     writeexif: {
@@ -82,6 +92,7 @@ async function vrannemstein(images, batch) {
     /**
      * @public
      * @virtual
+     * @memberOf vrannemstein
      * @member {Function} writeiptc
      * @param {string} source_url
      */
@@ -95,10 +106,10 @@ async function vrannemstein(images, batch) {
   const error = (...message) => (options.verbosity & 4) && console.error.call(console, ...message);
 
   /**
-   * @private
+   * @protected
+   * @virtual
    * @async
-   * @external Vips
-   * @external 'vrannemstein.$vips'
+   * @requires globalThis.Vips
    */
   const $vips = async(options) => {
     if (batch && $fn.$vips)
@@ -277,18 +288,18 @@ async function vrannemstein(images, batch) {
     const loader = source.getString('vips-loader');
 
     if (/^jpeg/.test(loader)) {
-      mime = 'image/jpeg', writeOpts = options.jpegsave ?? null;
+      mime = 'image/jpeg', writeOpts = options.jpegsave;
     } else if (/^png/.test(loader)) {
-      mime = 'image/png', writeOpts = options.pngsave ?? null;
+      mime = 'image/png', writeOpts = options.pngsave;
     } else if (/^gif/.test(loader)) {
-      mime = 'image/gif', writeOpts = options.gifsave ?? null;
+      mime = 'image/gif', writeOpts = options.gifsave;
     } else if (/^webp/.test(loader)) {
-      mime = 'image/webp', writeOpts = options.webpsave ?? null;
+      mime = 'image/webp', writeOpts = options.webpsave;
     } else if (/^avif/.test(loader)) {
       // heifsave compression VipsForeignHeifCompression(1 hevc, 2 avc, 3 jpeg, 4 av1)
       // heifsave encoder VipsForeignHeifCompression(0 auto, 1 aom, 2 rav1e, 3 svt, 4 x265)
       const opts = {compression: 4, encoder: 1};
-      mime = 'image/avif', writeOpts = {...(options.avifsave ?? null), ...opts};
+      mime = 'image/avif', writeOpts = {...options.avifsave, ...opts};
     } else {
       return error('Not supported mime-type.', {loader});
     }
@@ -360,6 +371,9 @@ async function vrannemstein(images, batch) {
     return {source_url, thumbs};
   }
 
+  if (! options.image_sizes)
+    throw new Error('Misleading configuration "image_sizes"');
+
   const p = [];
   for (const source_url of images) {
     if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(source_url)) {
@@ -384,37 +398,5 @@ async function vrannemstein(images, batch) {
 
   return Promise.all(p);
 }
-
-// Object.defineProperty(vrannemstein, 'readxmp', {
-//   configurable: true,
-//   value: (xmpData, source_url) => console.log('readxmp', xmpData, source_url)
-// });
-// Object.defineProperty(vrannemstein, 'readexif', {
-//   configurable: true,
-//   value: (exifData, source_url) => console.log('readexif', exifData, source_url)
-// });
-// Object.defineProperty(vrannemstein, 'readiptc', {
-//   configurable: true,
-//   value: (iptcData, source_url) => console.log('readiptc', iptcData, source_url)
-// });
-// Object.defineProperty(vrannemstein, 'writexmp', {
-//   configurable: true,
-//   value: (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>'
-// });
-// Object.defineProperty(vrannemstein, 'writeexif', {
-//   configurable: true,
-//   value: (source_url) => ({IFD2: {UserComment: 'test'}})
-// });
-// Object.defineProperty(vrannemstein, 'writeiptc', {
-//   configurable: true,
-//   value: (source_url) => (new Uint8Array())
-// });
-
-// vrannemstein.readxmp = (xmpData, source_url) => console.log('readxmp', xmpData, source_url);
-// vrannemstein.readexif = (exifData, source_url) => console.log('readexif', exifData, source_url);
-// vrannemstein.readiptc = (iptcData, source_url) => console.log('readiptc', iptcData, source_url);
-// vrannemstein.writexmp = (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>';
-// vrannemstein.writeexif = (source_url) => ({ IFD2: { UserComment: 'test' } });
-// vrannemstein.writeiptc = (source_url) => (new Uint8Array());
 </script>
 

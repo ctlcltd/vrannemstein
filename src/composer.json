@@ -1,0 +1,20 @@
+{
+    "name": "ctlcltd/vrannemstein-src",
+    "description": "Vrannemstein src scripts",
+    "type": "metapackage",
+    "scripts": {
+        "minify": ["@putenv DIST=1", "@php distribution.php"],
+        "php-docs": "phpdoc run -d $(realpath ../) -i src/ -i inc/dist/ -t docs-php",
+        "js-docs": "npx jsdoc ../inc/dist/*-script.php -c jsdoc-conf.json -d docs-js"
+    },
+    "authors": [{ "name": "Leonardo Laureti" }],
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "phpdocumentor/shim": "^3.9"
+    },
+    "config": {
+        "allow-plugins": {
+            "phpdocumentor/shim": true
+        }
+    }
+}

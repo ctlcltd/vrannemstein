@@ -3,6 +3,7 @@
  * Vrannemstein bulk actions javascript
  *
  * @package vrannemstein
+ * @version 0.1.1
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -16,16 +17,16 @@ defined( 'ABSPATH' ) || die();
   /**
    * @private
    * @constructor
-   * @external 'wp.media'
-   * @external 'wp.apiFetch'
+   * @requires globalThis.wp.media
+   * @requires globalThis.wp.apiFetch
    */
   function vrannemsteinBulkThumbnails() {
     const mode = wp.media ? 1 : 0; // (0 list, 1 grid)
 
     /**
      * @private
-     * @external vrannemstein
-     * @external 'wp.apiFetch'
+     * @requires globalThis.vrannemstein
+     * @requires globalThis.wp.apiFetch
      * @param {array} items
      * @return {Promise}
      */
@@ -126,7 +127,7 @@ defined( 'ABSPATH' ) || die();
 
     /**
      * @private
-     * @external 'wp.media'
+     * @requires globalThis.wp.media
      */
     function bulkMediaGrid() {
       debug && console.log('bulkMediaGrid');
@@ -163,7 +164,7 @@ defined( 'ABSPATH' ) || die();
           toolbar.$('.bulk-thumbnails-button').removeClass('hidden');
         else
           toolbar.$('.bulk-thumbnails-button').addClass('hidden');
-      }
+      };
       const button = new BulkThumbnailsButton({
         filters: controller.state().get('filterable'),
         style: 'primary',

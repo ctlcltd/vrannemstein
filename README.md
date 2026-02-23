@@ -30,6 +30,11 @@ Activate the plugin on WordPress Plugins (from WP-CLI `wp plugin activate vranne
 
 A typical usage requires to configure your web server with the `wasm-vips` specific Cross-Origin policies, to enforce CORS isolation and to allow the `SharedArrayBuffer` browser feature.
 
+```
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: same-origin
+```
+
 > [!TIP]
 > See the `www-config-sample` folder for examples to configure the server properly.
 
@@ -91,5 +96,5 @@ add_filter( 'vrannemstein_bulk_actions', '__return_false' );
 
 ## License
 
-Licensed under the terms of the [GNU GPLv2 License](LICENSE-GPL-2.0-or-later), version 2 or any later version.
+Licensed under the terms of the [GNU GPLv2 License](https://github.com/ctlcltd/vrannemstein/blob/main/LICENSE-GPL-2.0-or-later), version 2 or any later version.
 

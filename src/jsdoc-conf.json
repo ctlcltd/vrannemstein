@@ -1,0 +1,14 @@
+{
+    "plugins": [
+        "./jsdoc-plugins/beforeParse",
+        "./jsdoc-plugins/newDoclet"
+    ],
+    "source": {
+        "includePattern": ".+\\.php$",
+        "excludePattern": "(^|\\/|\\\\)_"
+    },
+    "opts": {
+        "access": "all",
+        "readme": "../README.md"
+    }
+}

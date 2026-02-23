@@ -1,0 +1,15 @@
+{
+  "name": "vrannemstein-src",
+  "description": "Vrannemstein src scripts",
+  "private": true,
+  "scripts": {
+    "minify": "DIST=1 php distribution.php",
+    "php-docs": "vendor/bin/phpdoc run -d $(realpath ../) -i src/ -i inc/dist/ -t docs-php",
+    "js-docs": "jsdoc ../inc/dist/*-script.php -c jsdoc-conf.json -d docs-js"
+  },
+  "author": "Leonardo Laureti",
+  "license": "GPL-2.0-or-later",
+  "devDependencies": {
+    "jsdoc": "^4.0.5"
+  }
+}

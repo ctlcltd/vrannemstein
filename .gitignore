@@ -1,4 +1,10 @@
 .DS_Store
 package-lock.json
 node_modules
+composer.phar
+composer.lock
+vendor
+.phpdoc
+docs-js
+docs-php
 project

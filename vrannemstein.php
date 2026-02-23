@@ -11,7 +11,7 @@
  * Update URI: false
  * Requires at least: 6.8
  * Requires PHP: 8.3
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	const string VERSION = '0.1.0';
+	const string VERSION = '0.1.1';
 	const string WASM_VIPS_VERSION = '0.0.16'; // reflects package.json version
 
 	public int $queue_priority = 9999; // higher scripts enqueue priority
@@ -63,7 +63,7 @@ class Vrannemstein {
 	}
 
 	static function init() {
-		static $init = 0 ?: new Vrannemstein();
+		static $init = new Vrannemstein();
 	}
 
 	/**
@@ -216,21 +216,21 @@ class Vrannemstein {
 	 * The thumbnailer script
 	 */
 	public function thumbnailer_script() {
-		include_once __DIR__ . '/inc/thumbnailer-script.php';
+		include_once __DIR__ . '/inc/dist/thumbnailer-script' . ( SCRIPT_DEBUG ? '': '-min' ) . '.php';
 	}
 
 	/**
 	 * Post-processing script: WP apiFetch middleware, editors and uploader
 	 */
 	public function postprocess_script() {
-		include_once __DIR__ . '/inc/postprocess-script.php';
+		include_once __DIR__ . '/inc/dist/postprocess-script' . ( SCRIPT_DEBUG ? '' : '-min' ) . '.php';
 	}
 
 	/**
 	 * Bulk actions script: WP Media Library
 	 */
 	public function bulk_actions_script() {
-		include_once __DIR__ . '/inc/bulk-actions-script.php';
+		include_once __DIR__ . '/inc/dist/bulk-actions-script' . ( SCRIPT_DEBUG ? '' : '-min' ) . '.php';
 	}
 
 	protected function crossorigin_policies() {
@@ -248,7 +248,7 @@ class Vrannemstein {
 
 	public function enqueue_scripts() {
 		wp_register_script( 'vrannemstein', false, false, false, true );
-		wp_add_inline_script( 'vrannemstein', 'var vrannemstein_config = ' . wp_json_encode( $this->thumbnailer_config() ), 'before' );
+		wp_add_inline_script( 'vrannemstein', 'var vrannemstein_config = ' . wp_json_encode( $this->thumbnailer_config() ) . ';', 'before' );
 		wp_enqueue_script( 'vrannemstein' );
 
 		wp_enqueue_script( 'wasm-vips', plugins_url( 'node_modules/wasm-vips/lib/vips.js', __FILE__ ), false, $this::WASM_VIPS_VERSION, true );

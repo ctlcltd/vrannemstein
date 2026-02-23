@@ -10,6 +10,7 @@
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
+ * @version 0.1.1
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -26,8 +27,10 @@ defined( 'ABSPATH' ) || die();
    */
   const vrannemsteinPostProcessing = Object.freeze({
     /**
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
      * @param {object} options
-     * @param {'wp.apiFetch'} next
+     * @param {wp.apiFetch} next
      * @param {boolean} batch
      * @return {Promise}
      */
@@ -85,9 +88,10 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @lends vrannemsteinThumbnailerMiddleware
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
      * @param {object} options
-     * @param {'wp.apiFetch'} next
+     * @param {wp.apiFetch} next
      * @return {Promise|void}
      */
     ThumbnailerMiddleware: (options, next) => {
@@ -153,7 +157,9 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @external 'wp.apiFetch'
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
+     * @requires globalThis.wp.apiFetch
      * @param {object} uploader
      */
     puploadProcessing: (uploader) => {
@@ -244,8 +250,10 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @external 'wp.media'
-     * @external 'wp.apiFetch'
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
+     * @requires globalThis.wp.media
+     * @requires globalThis.wp.apiFetch
      * @param {object|undefined} uploader
      */
     pluploadTryout: (uploader) => {
@@ -261,8 +269,9 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
      * @see wp.hooks.filters.editor.MediaUpload
-     *
      * @param {ReactComponent} component
      * @return {ReactComponent}
      */
@@ -279,7 +288,9 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @external tinymce
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
+     * @requires globalThis.tinymce
      */
     mceEditorMediaUpload: () => {
       debug && console.log('mceEditorMediaUpload');
@@ -300,6 +311,10 @@ defined( 'ABSPATH' ) || die();
     }
   });
   const $fn = vrannemsteinPostProcessing;
+  /**
+   * @external ThumbnailerMiddleware
+   * @see wp.apiFetch
+   */
   const vrannemsteinThumbnailerMiddleware = $fn.ThumbnailerMiddleware;
 
   wp = wp || {};

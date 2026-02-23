@@ -1,7 +1,7 @@
 {
   "name": "vrannemstein",
-  "version": "0.0.1",
-  "description": "Image thumbnails using wasm-vips via the client side.",
+  "version": "0.1.1",
+  "description": "Image thumbnails using wasm-vips via the client side, WordPress plugin",
   "homepage": "https://github.com/ctlcltd/vrannemstein",
   "bugs": {
     "url": "https://github.com/ctlcltd/vrannemstein/issues"
