@@ -3,6 +3,7 @@
  * REST API: Vrannemstein_REST_Controller
  *
  * @package vrannemstein
+ * @version 0.1.2
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  * @api
@@ -193,7 +194,7 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 		/** This filter is documented in wp-admin/includes/image.php */
 		$image_meta = apply_filters( 'wp_generate_attachment_metadata', $image_meta, $request['id'], 'update' );
 
-		wp_update_attachment_metadata( $attachment_id, $image_meta );
+		wp_update_attachment_metadata( $request['id'], $image_meta );
 
 		$attachment = get_post( $request['id'] );
 		$response = $this->prepare_item_for_response( $attachment, $request );
@@ -340,13 +341,13 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 				continue;
 			}
 
-			list( $width, $height, $crop ) = $this->registered_sizes[ $size_name ];
+			list( 'width' => $width, 'height' => $height, 'crop' => $crop ) = $this->registered_sizes[ $size_name ];
 
-			if ( is_int( $size_data['dst_w'] ) && $width != 0 && $size_data['dst_w'] === $width )
+			if ( is_int( $size_data['dst_w'] ) && $width !== 0 && $width !== $height && $size_data['dst_w'] !== $width )
 				$invalid_params[ $size_name ][] = 'dst_w';
-			if ( is_int( $size_data['dst_h'] ) && $height != 0 && $size_data['dst_h'] === $height )
+			if ( is_int( $size_data['dst_h'] ) && $height !== 0 && $height !== $width && $size_data['dst_h'] !== $height )
 				$invalid_params[ $size_name ][] = 'dst_h';
-			if ( is_bool( $size_data['crop'] ) && $size_data['crop'] === $crop )
+			if ( is_bool( $size_data['crop'] ) && $size_data['crop'] !== $crop )
 				$invalid_params[ $size_name ][] = 'crop';
 			if ( is_int( $size_data['src_w'] ) && ! $size_data['src_w'] )
 				$invalid_params[ $size_name ][] = 'src_w';

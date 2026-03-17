@@ -51,7 +51,7 @@ foreach ($files as $filename) {
 	// revert substitutions and inline the code
 	$script = str_replace([' ', "\n", "\0"], ['', '', ' '], $script);
 	// cleanup
-	$script = str_replace(['; ', ';}', ";)", ' {', '} '], [';', '}', ')', '{', '}'], $script);
+	$script = str_replace(['; ', ';}', ";)", '}else {'], [';', '}', ')', '}else{'], $script);
 	// join contiguous properties
 	$matched = true;
 	while ($matched) {

@@ -10,7 +10,7 @@
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
- * @version 0.1.1
+ * @version 0.1.2
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -20,6 +20,20 @@ defined( 'ABSPATH' ) || die();
 ?><script id="vrannemstein-postprocess-script">
 (function(wp, jQuery) {
   const debug = true;
+
+  const errorNotice = (err) => {
+    console.error(err);
+
+    const wp_i18n = wp.i18n;
+    const message = wp_i18n.__('An unknown error occurred during creation. Please try again.');
+    const element = document.querySelector('.wp-header-end') || document.querySelector('.wrap h1, .wrap h2');
+    const notice = document.createElement('div');
+    const p = document.createElement('p');
+    notice.className = 'error notice';
+    p.innerText = message;
+    notice.append(p);
+    element.after(notice);
+  };
 
   /**
    * @private
@@ -56,7 +70,7 @@ defined( 'ABSPATH' ) || die();
               body.append('data', JSON.stringify(sizes));
               resolve();
             } catch (err) {
-              return console.error(err);
+              return err; //forward
             }
           })
           .catch(reject);
@@ -200,7 +214,7 @@ defined( 'ABSPATH' ) || die();
             }
             return Promise.all(p);
           })
-          .catch(err => console.error(err))
+          .catch(err => errorNotice(err));
         }
       };
       const uploaded = (up, file, response) => {
@@ -224,7 +238,7 @@ defined( 'ABSPATH' ) || die();
                 if (err instanceof SyntaxError)
                   attachmentId = body.replace(/^<pre>(\d+)<\/pre>$/, '$1');
                 else
-                  throw err;
+                  throw err; //forward
               }
             } else if (body) {
               attachmentId = parseInt(body);

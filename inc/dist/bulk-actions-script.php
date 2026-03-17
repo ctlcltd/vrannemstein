@@ -3,7 +3,7 @@
  * Vrannemstein bulk actions javascript
  *
  * @package vrannemstein
- * @version 0.1.1
+ * @version 0.1.2
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -13,6 +13,35 @@ defined( 'ABSPATH' ) || die();
 ?><script id="vrannemstein-bulk-actions-script">
 (function(wp, jQuery) {
   const debug = true;
+
+  const NOTICE_DISMISS_DELAY = 5e3;
+  const notice = (type, message, dismiss) => {
+    const element = document.querySelector('.wp-header-end') || document.querySelector('.wrap h1, .wrap h2');
+    const notice = document.createElement('div');
+    const p = document.createElement('p');
+    notice.className = `${type} notice`;
+    p.innerText = message;
+    notice.append(p);
+    element.after(notice);
+
+    if (dismiss) {
+      setTimeout(() => {
+        notice.remove();
+      }, NOTICE_DISMISS_DELAY);
+    }
+  };
+  const errorNotice = (err) => {
+    console.error(err);
+
+    const wp_i18n = wp.i18n;
+    const message = wp_i18n.__('An unknown error occurred during creation. Please try again.');
+    notice('error', message);
+  };
+  const successNotice = (dismiss) => {
+    const wp_i18n = wp.i18n;
+    const message = wp_i18n.__('Done');
+    notice('updated', message, dismiss);
+  };
 
   /**
    * @private
@@ -58,7 +87,7 @@ defined( 'ABSPATH' ) || die();
             body.append('data', JSON.stringify(sizes));
             data.push({body, attachmentId, attachment});
           } catch (err) {
-            console.error(err);
+            return err; //forward
           }
         }
       })
@@ -117,8 +146,9 @@ defined( 'ABSPATH' ) || die();
               elements.forEach((element) => {
                 element.checked = false;
               });
+              successNotice(true);
             })
-            .catch(err => console.error(err));
+            .catch(err => errorNotice(err));
           }
         }
       }
@@ -188,8 +218,11 @@ defined( 'ABSPATH' ) || die();
               data.push({attachmentId, attachment: {id: attachmentId, source_url}, batch: true});
             }
             createImageSubsizes(data)
-            .then(() => controller.trigger('selection:action:done'))
-            .catch(err => console.error(err));
+            .then(() => {
+              controller.trigger('selection:action:done');
+              successNotice(true);
+            })
+            .catch(err => errorNotice(err));
           } else {
             controller.trigger('selection:action:done');
           }

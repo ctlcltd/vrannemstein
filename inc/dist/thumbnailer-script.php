@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.1
+ * @version 0.1.2
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -225,10 +225,10 @@ async function vrannemstein(images, batch) {
     // if (hshrink > 1 && vshrink > 1)
     let {hshrink, vshrink} = shrinking(image.width, image.height, dst_w, dst_h, crop);
     info(' ', 'thumb reduce', name, {hshrink, vshrink, crop});
-    let thumb = image.reduce(hshrink, vshrink, options.reduce);
+    let thumb = image.reduce(hshrink, vshrink, options.reduce ?? null);
 
     if (crop)
-      thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop);
+      thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop ?? null);
 
     if (writeOpts.keep && (writeOpts.keep & 1))
       thumb = thumb.copy({xres: 72 / 25.4, yres: 72 / 25.4}); // px/mm
