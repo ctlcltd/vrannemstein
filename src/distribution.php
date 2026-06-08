@@ -42,8 +42,8 @@ foreach ($files as $filename) {
 	// wrap inline "else" statements
 	$script = preg_replace('/(else)\s/', "$1\0", $script);
 	// wrap reserved words
-	$script = preg_replace('/(new|return|async|class|function|throw|const|let|var|await|using|static|case|delete) /', "\$1\0", $script);
-	$script = preg_replace('/ (in|of|instanceof|typeof|extends) /', "\0\$1\0", $script);
+	$script = preg_replace('/(new|return|async|class|function|typeof|throw|const|let|var|await|using|static|case|delete) /', "\$1\0", $script);
+	$script = preg_replace('/ (in|of|instanceof|extends) /', "\0\$1\0", $script);
 	// replace white-space on strings
 	$script = preg_replace_callback('/\B[\'"`]([^\'"`]+)[\'"`]\B/', function ($matches) {
 		return str_replace(' ', "\0", $matches[0]);

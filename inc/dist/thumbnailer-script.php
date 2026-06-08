@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.3
+ * @version 0.1.4
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -221,8 +221,6 @@ async function vrannemstein(images, batch) {
     using image = vips.Image.newFromBuffer(blob, readOpts);
     image.setDeleteOnClose(true);
 
-    //todo test equal bits full size
-    // if (hshrink > 1 && vshrink > 1)
     let {hshrink, vshrink} = shrinking(image.width, image.height, dst_w, dst_h, crop);
     info(' ', 'thumb reduce', name, {hshrink, vshrink, crop});
     let thumb = image.reduce(hshrink, vshrink, options.reduce ?? null);
@@ -230,13 +228,14 @@ async function vrannemstein(images, batch) {
     if (crop)
       thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop ?? null);
 
-    if (writeOpts.keep && (writeOpts.keep & 1))
-      thumb = thumb.copy({xres: 72 / 25.4, yres: 72 / 25.4}); // px/mm
+    if (writeOpts.keep && (writeOpts.keep & 1) && options.density)
+      thumb = thumb.copy({xres: options.density / 25.4, yres: options.density / 25.4}); // px/mm
 
     if (xmpData) {
+      thumb.remove('xmp-data');
       if (xmpData instanceof Uint8Array) {
         thumb.setBlob('xmp-data', xmpData);
-      } else if (xmpData instanceof String) {
+      } else if (typeof xmpData === 'string') {
         const xmp_data = new Uint8Array([...xmpData].map((c) => c.codePointAt(0)));
         thumb.setBlob('xmp-data', xmp_data);
       }
@@ -257,8 +256,11 @@ async function vrannemstein(images, batch) {
         });
       }
     }
-    if (iptcData && iptcData instanceof Uint8Array) {
-      thumb.setBlob('iptc-data', iptcData);
+    if (iptcData) {
+      thumb.remove('iptc-data');
+      if (iptcData instanceof Uint8Array) {
+        thumb.setBlob('iptc-data', iptcData);
+      }
     }
 
     log('thumbnail', name, {w: thumb.width, h: thumb.height});
@@ -292,7 +294,7 @@ async function vrannemstein(images, batch) {
     } else if (/^png/.test(loader)) {
       mime = 'image/png', writeOpts = options.pngsave;
     } else if (/^gif/.test(loader)) {
-      mime = 'image/gif', writeOpts = options.gifsave;
+      mime = 'image/gif', writeOpts = options.cgifsave;
     } else if (/^webp/.test(loader)) {
       mime = 'image/webp', writeOpts = options.webpsave;
     } else if (/^avif/.test(loader)) {
@@ -342,13 +344,13 @@ async function vrannemstein(images, batch) {
       let dst_h = mh;
 
       if (mw == mh) {
-        dst_w = hv >= 1 ? mw : Math.ceil(mw / ratio);
-        dst_h = hv >= 1 ? Math.ceil(mh / ratio) : mh;
+        dst_w = hv >= 1 ? mw : Math.round(mw / ratio);
+        dst_h = hv >= 1 ? Math.round(mh / ratio) : mh;
       } else if (mw != 0) {
         dst_w = mw;
-        dst_h = Math.ceil(mw / ratio);
+        dst_h = hv >= 1 ? Math.round(mw / ratio) : Math.round(mw * ratio);
       } else if (mh != 0) {
-        dst_w = Math.ceil(mh / ratio);
+        dst_w = hv >= 1 ? Math.round(mh / ratio) : Math.round(mh * ratio);
         dst_h = mh;
       }
       if (crop) {
