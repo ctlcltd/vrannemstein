@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.4
+ * @version 0.1.5
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -21,86 +21,14 @@ defined( 'ABSPATH' ) || die();
  */
 async function vrannemstein(images, batch) {
   const $fn = vrannemstein;
+  /** @external vrannemstein_hooks */
+  const $hooks = window.vrannemstein_hooks || {};
   /**
    * @external vrannemstein_config
    * @see globalThis.vrannemstein_config
    */
   const options = vrannemstein_config;
 
-  Object.defineProperties($fn, {
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} readxmp
-     * @param {string} xmpData
-     * @param {string} source_url
-     */
-    readxmp: {
-      configurable: options.readXmp || false,
-      writable: true,
-      value: $fn.readxmp instanceof Function ? $fn.readxmp : (xmpData, source_url) => undefined
-    },
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} readexif
-     * @param {string} exifData
-     * @param {string} source_url
-     */
-    readexif: {
-      configurable: options.readExif || false,
-      writable: true,
-      value: $fn.readexif instanceof Function ? $fn.readexif : (exifData, source_url) => undefined
-    },
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} readiptc
-     * @param {string} iptcData
-     * @param {string} source_url
-     */
-    readiptc: {
-      configurable: options.readIptc || false,
-      writable: true,
-      value: $fn.readiptc instanceof Function ? $fn.readiptc : (iptcData, source_url) => undefined
-    },
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} writexmp
-     * @param {string} source_url
-     */
-    writexmp: {
-      writable: true,
-      value: $fn.writexmp instanceof Function ? $fn.writexmp : (source_url) => undefined
-    },
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} writeexif
-     * @param {string} source_url
-     */
-    writeexif: {
-      writable: true,
-      value: $fn.writeexif instanceof Function ? $fn.writeexif : (source_url) => undefined
-    },
-    /**
-     * @public
-     * @virtual
-     * @memberOf vrannemstein
-     * @member {Function} writeiptc
-     * @param {string} source_url
-     */
-    writeiptc: {
-      writable: true,
-      value: $fn.writeiptc instanceof Function ? $fn.writeiptc : (source_url) => undefined
-    }
-  });
   const log = (...message) => (options.verbosity & 1) && console.log.call(console, ...message);
   const info = (...message) => (options.verbosity & 2) && console.info.call(console, ...message);
   const error = (...message) => (options.verbosity & 4) && console.error.call(console, ...message);
@@ -131,6 +59,98 @@ async function vrannemstein(images, batch) {
   });
 
   log('vips loaded', vips.version());
+
+  /**
+   * @private
+   * @param {string} filename
+   * @param {object} sizes
+   * @return {string}
+   */
+  function imageDestFilename(filename, sizes) {
+    const {dst_w, dst_h} = sizes;
+    const dest_filename = filename.replace(/(\.[^\.]+)$/, `-${dst_w}x${dst_h}$1`);
+
+    /**
+     * @function external:vrannemstein_hooks.imageDestFilename
+     * @param {string} dest_filename
+     * @param {string} filename
+     * @param {object} sizes
+     * @param {number} sizes.src_w
+     * @param {number} sizes.src_h
+     * @param {number} sizes.dst_w
+     * @param {number} sizes.dst_h
+     * @param {boolean} sizes.crop
+     * @return {string}
+     */
+    if ($hooks.imageDestFilename && $hooks.imageDestFilename instanceof Function)
+      return $hooks.imageDestFilename(dest_filename, filename, sizes);
+
+    return dest_filename;
+  }
+
+  /**
+   * @private
+   * @param {object} thumbOpts
+   * @param {object} sizes
+   * @param {string} source_url
+   * @param {string} extname
+   * @return {object}
+   */
+  function imageThumbOpts(thumbOpts, sizes, source_url, extname) {
+    const {src_w, src_h, dst_w, dst_h} = sizes;
+    const opts = (dst_w > src_w || dst_h > src_h) ? null : thumbOpts;
+
+    /**
+     * @function external:vrannemstein_hooks.imageThumbOpts
+     * @param {object} opts
+     * @param {object} thumbOpts
+     * @param {boolean} [thumbOpts.shrink=true]
+     * @param {boolean} [thumbOpts.resize=true]
+     * @param {boolean} [thumbOpts.crop=true]
+     * @param {object} sizes
+     * @param {number} sizes.src_w
+     * @param {number} sizes.src_h
+     * @param {number} sizes.dst_w
+     * @param {number} sizes.dst_h
+     * @param {boolean} sizes.crop
+     * @param {string} source_url
+     * @param {string} extname
+     * @return {(object|null)}
+     */
+    if ($hooks.imageThumbOpts && $hooks.imageThumbOpts instanceof Function)
+      return $hooks.imageThumbOpts(opts, thumbOpts, sizes, source_url, extname);
+      
+    return opts;
+  }
+
+  /**
+   * @private
+   * @param {object} writeOpts
+   * @param {object} sizes
+   * @param {string} source_url
+   * @param {string} extname
+   * @return {object}
+   */
+  function imageWriteOpts(writeOpts, sizes, source_url, extname) {
+    /**
+     * @function external:vrannemstein_hooks.imageWriteOpts
+     * @param {object} opts
+     * @param {object} writeOpts
+     * @param {object} sizes
+     * @param {number} sizes.src_w
+     * @param {number} sizes.src_h
+     * @param {number} sizes.dst_w
+     * @param {number} sizes.dst_h
+     * @param {boolean} sizes.crop
+     * @param {string} source_url
+     * @param {string} extname
+     * @return {object}
+     */
+    if ($hooks.imageWriteOpts && $hooks.imageWriteOpts instanceof Function)
+      return $hooks.imageWriteOpts({...writeOpts}, writeOpts, sizes, source_url, extname);
+      
+    return writeOpts;
+  }
 
   /**
    * @private
@@ -205,14 +225,29 @@ async function vrannemstein(images, batch) {
    * @param {object} data
    */
   async function thumbnail(blob, writeOpts, name, data) {
-    const {source_url, mime, extname, src_w, src_h, dst_w, dst_h, crop} = data;
+    const {source_url, mime, dest_url, extname, thumbOpts, src_w, src_h, dst_w, dst_h, crop} = data;
     let readOpts = {};
 
-    const xmpData = $fn.writexmp instanceof Function ? $fn.writexmp(source_url) : null;
-    const exifData = $fn.writeexif instanceof Function ? $fn.writeexif(source_url) : null;
-    const iptcData = $fn.writeiptc instanceof Function ? $fn.writeiptc(source_url) : null;
+    /**
+     * @function external:vrannemstein_hooks.writeXmp
+     * @param {string} source_url
+     * @return {string}
+     */
+    const xmpData = $hooks.writeXmp && $hooks.writeXmp instanceof Function ? $hooks.writeXmp(source_url) : null;
+    /**
+     * @function external:vrannemstein_hooks.writeExif
+     * @param {string} source_url
+     * @return {string}
+     */
+    const exifData = $hooks.writeExif && $hooks.writeExif instanceof Function ? $hooks.writeExif(source_url) : null;
+    /**
+     * @function external:vrannemstein_hooks.writeIptc
+     * @param {string} source_url
+     * @return {string}
+     */
+    const iptcData = $hooks.writeIptc && $hooks.writeIptc instanceof Function ? $hooks.writeIptc(source_url) : null;
 
-    if (/image\/jpeg/.test(mime)) {
+    if (thumbOpts.shrink && /image\/jpeg/.test(mime)) {
       let {shrink} = shrinking(src_w, src_h, dst_w, dst_h, crop);
       readOpts.shrink = jpegShrink(shrink); // integer
       info(' ', 'thumb shrink', name, {initial: shrink, jpeg: readOpts.shrink});
@@ -220,18 +255,23 @@ async function vrannemstein(images, batch) {
 
     using image = vips.Image.newFromBuffer(blob, readOpts);
     image.setDeleteOnClose(true);
+    let thumb;
 
-    let {hshrink, vshrink} = shrinking(image.width, image.height, dst_w, dst_h, crop);
-    info(' ', 'thumb reduce', name, {hshrink, vshrink, crop});
-    let thumb = image.reduce(hshrink, vshrink, options.reduce ?? null);
+    if (thumbOpts.resize) {
+      let {hshrink, vshrink} = shrinking(image.width, image.height, dst_w, dst_h, crop);
+      info(' ', 'thumb reduce', name, {hshrink, vshrink, crop});
+      thumb = image.reduce(hshrink, vshrink, options.reduce ?? null);
+    } else {
+      thumb = image.copy();
+    }
 
-    if (crop)
+    if (thumbOpts.crop && crop)
       thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop ?? null);
 
     if (writeOpts.keep && (writeOpts.keep & 1) && options.density)
       thumb = thumb.copy({xres: options.density / 25.4, yres: options.density / 25.4}); // px/mm
 
-    if (xmpData) {
+    if (xmpData != null) {
       thumb.remove('xmp-data');
       if (xmpData instanceof Uint8Array) {
         thumb.setBlob('xmp-data', xmpData);
@@ -240,7 +280,7 @@ async function vrannemstein(images, batch) {
         thumb.setBlob('xmp-data', xmp_data);
       }
     }
-    if (exifData) {
+    if (exifData != null) {
       const fields = thumb.getFields();
       for (let i = 0; i < fields.size(); i++) {
         if (/exif-/.test(fields.get(i)))
@@ -256,7 +296,7 @@ async function vrannemstein(images, batch) {
         });
       }
     }
-    if (iptcData) {
+    if (iptcData != null) {
       thumb.remove('iptc-data');
       if (iptcData instanceof Uint8Array) {
         thumb.setBlob('iptc-data', iptcData);
@@ -276,11 +316,12 @@ async function vrannemstein(images, batch) {
    * @private
    * @async
    * @param {string} source_url
+   * @param {string} dest_url
    * @param {ArrayBuffer} blob
    * @return {object}
    */
-  async function image(source_url, blob) {
-    const filename = source_url.replace(/.+\/([^/]+)/, '$1');
+  async function image(source_url, dest_url, blob) {
+    const filename = dest_url.replace(/.+\/([^/]+)/, '$1');
     const extname = filename.replace(/.+(\.[^\.]+)$/, '$1');
 
     using source = vips.Image.newFromBuffer(blob);
@@ -290,48 +331,82 @@ async function vrannemstein(images, batch) {
     const loader = source.getString('vips-loader');
 
     if (/^jpeg/.test(loader)) {
-      mime = 'image/jpeg', writeOpts = options.jpegsave;
+      mime = 'image/jpeg';
     } else if (/^png/.test(loader)) {
-      mime = 'image/png', writeOpts = options.pngsave;
+      mime = 'image/png';
     } else if (/^gif/.test(loader)) {
-      mime = 'image/gif', writeOpts = options.cgifsave;
+      mime = 'image/gif';
     } else if (/^webp/.test(loader)) {
-      mime = 'image/webp', writeOpts = options.webpsave;
+      mime = 'image/webp';
     } else if (/^avif/.test(loader)) {
+      mime = 'image/avif';
+    } else {
+      return error('Not supported mime-type.', {loader});
+    }
+
+    if (/jpg|jpeg|jpe/.test(extname)) {
+      writeOpts = options.jpegsave;
+    } else if (/png/.test(extname)) {
+      writeOpts = options.pngsave;
+    } else if (/gif/.test(extname)) {
+      writeOpts = options.gifsave;
+    } else if (/webp/.test(extname)) {
+      writeOpts = options.webpsave;
+    } else if (/avif/.test(extname)) {
       // heifsave compression VipsForeignHeifCompression(1 hevc, 2 avc, 3 jpeg, 4 av1)
       // heifsave encoder VipsForeignHeifCompression(0 auto, 1 aom, 2 rav1e, 3 svt, 4 x265)
       const opts = {compression: 4, encoder: 1};
-      mime = 'image/avif', writeOpts = {...options.avifsave, ...opts};
+      writeOpts = {...options.avifsave, ...opts};
     } else {
-      return error('Not supported mime-type.', {loader});
+      return error('Not supported file format output.', {extname});
     }
 
     // libvips header.h  VIPS_META_XMP_NAME "xmp-data"
     if (options.readXmp && source.getTypeof('xmp-data') != 0) {
       const xmp_data = source.getBlob('xmp-data');
       const xmpData = String.fromCodePoint(...xmp_data);
-      if ($fn.readxmp instanceof Function)
-        $fn.readxmp.call(this, xmpData, source_url);
+
+      /**
+       * @function external:vrannemstein_hooks.readXmp
+       * @param {string} xmpData
+       * @param {string} source_url
+       * @return {string}
+       */
+      if ($hooks.readXmp && $hooks.readXmp instanceof Function)
+        $hooks.readXmp(xmpData, source_url);
     }
     // libvips header.h  VIPS_META_EXIF_NAME "exif-data"
     if (options.readExif && source.getTypeof('exif-data') != 0) {
       const exif_data = source.getBlob('exif-data');
       const exifData = String.fromCodePoint(...exif_data);
-      if ($fn.readexif instanceof Function)
-        $fn.readexif.call(this, exifData, source_url);
+
+      /**
+       * @function external:vrannemstein_hooks.readExif
+       * @param {string} exifData
+       * @param {string} source_url
+       * @return {string}
+       */
+      if ($hooks.readExif && $hooks.readExif instanceof Function)
+        $hooks.readExif(exifData, source_url);
     }
     // libvips header.h  VIPS_META_IPTC_NAME "iptc-data"
     if (options.readIptc && source.getTypeof('iptc-data') != 0) {
       const iptc_data = source.getBlob('iptc-data');
       const iptcData = String.fromCodePoint(...iptc_data);
-      if ($fn.readiptc instanceof Function)
-        $fn.readiptc.call(this, iptcData, source_url);
+
+      /**
+       * @function external:vrannemstein_hooks.readIptc
+       * @param {string} iptcData
+       * @param {string} source_url
+       * @return {string}
+       */
+      if ($hooks.readIptc && $hooks.readIptc instanceof Function)
+        $hooks.readIptc(iptcData, source_url);
     }
 
     const image_sizes = options.image_sizes;
     const thumbs = {};
 
-    //todo medium == medium-large to skip
     for (const size in image_sizes) {
       const {width: mw, height: mh, crop} = image_sizes[size];
       const name = `${filename}[${size}]`;
@@ -359,15 +434,18 @@ async function vrannemstein(images, batch) {
 
       info('thumb', name, {dst_w, dst_h, mw, mh, crop});
 
-      if (dst_w > src_w || dst_h > src_h) {
+      const sizes = {src_w, src_h, dst_w, dst_h, crop};
+      const thumbOpts = imageThumbOpts({shrink: true, resize: true, crop: true}, sizes, source_url, extname);
+
+      if (! thumbOpts) {
         info(' ', 'thumb skip', name, {src_w, src_h});
         continue;
       }
 
-      const fname = filename.replace(/(\.[^\.]+)$/, `-${dst_w}x${dst_h}$1`);
-      const data = {src_w, src_h, dst_w, dst_h, crop};
-      const thumb = await thumbnail(blob, writeOpts, name, {source_url, mime, extname, ...data});
-      thumbs[size] = {blob: thumb, mime, filename: fname, data};
+      const opts = imageWriteOpts(writeOpts, sizes, source_url, extname);
+      const dest_filename = imageDestFilename(filename, sizes);
+      const thumb = await thumbnail(blob, opts, name, {source_url, mime, dest_url, extname, thumbOpts, ...sizes});
+      thumbs[size] = {blob: thumb, mime, filename: dest_filename, sizes};
     };
 
     return {source_url, thumbs};
@@ -377,9 +455,13 @@ async function vrannemstein(images, batch) {
     throw new Error('Misleading configuration "image_sizes"');
 
   const p = [];
-  for (const source_url of images) {
+  for (const {source_url, dest_url} of images) {
     if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(source_url)) {
-      error('Not supported file format.');
+      error('Not supported file format input.');
+      continue;
+    }
+    if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(dest_url)) {
+      error('Not supported file format output.');
       continue;
     }
     p.push(
@@ -392,7 +474,7 @@ async function vrannemstein(images, batch) {
             return response.arrayBuffer();
         })
         .catch(err => reject(err))
-        .then(blob => image(source_url, blob))
+        .then(blob => image(source_url, dest_url, blob))
         .then(thumbs => resolve(thumbs));
       })
     );

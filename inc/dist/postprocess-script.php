@@ -10,7 +10,7 @@
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
- * @version 0.1.4
+ * @version 0.1.5
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -65,7 +65,7 @@ defined( 'ABSPATH' ) || die();
               for (const size in img.thumbs) {
                 const {blob, type, filename} = img.thumbs[size];
                 body.append(size, new Blob([blob], {type}), filename);
-                sizes[size] = img.thumbs[size].data;
+                sizes[size] = img.thumbs[size].sizes;
               }
               body.append('data', JSON.stringify(sizes));
               resolve();

@@ -3,7 +3,7 @@
  * REST API: Vrannemstein_REST_Controller
  *
  * @package vrannemstein
- * @version 0.1.4
+ * @version 0.1.5
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  * @api
@@ -143,7 +143,7 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 		}
 
 		remove_filter( 'wp_unique_filename', array( $this, 'handle_filename' ), 10 );
-		remove_filter( 'pre_move_uploaded_file', array( $this, 'handle_upload', ), 10 );
+		remove_filter( 'pre_move_uploaded_file', array( $this, 'handle_upload' ), 10 );
 
 		if ( $error )
 			return $error;

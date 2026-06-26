@@ -3,7 +3,7 @@
  * Vrannemstein bulk actions javascript
  *
  * @package vrannemstein
- * @version 0.1.4
+ * @version 0.1.5
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -12,6 +12,8 @@ defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-bulk-actions-script">
 (function(wp, jQuery) {
+  /** @external vrannemstein_hooks */
+
   const debug = true;
 
   const NOTICE_DISMISS_DELAY = 5e3;
@@ -66,9 +68,9 @@ defined( 'ABSPATH' ) || die();
       const images = [];
       for (const item of items) {
         const {attachmentId, attachment} = item;
-        const source_url = attachment.source_url;
+        const {source_url, dest_url} = attachment;
         refs[source_url] = items.indexOf(item);
-        images.push(source_url);
+        images.push({source_url, dest_url});
       }
       const data = [];
       return vrannemstein(images, true)
@@ -82,7 +84,7 @@ defined( 'ABSPATH' ) || die();
             for (const size in img.thumbs) {
               const {blob, type, filename} = img.thumbs[size];
               body.append(size, new Blob([blob], {type}), filename);
-              sizes[size] = img.thumbs[size].data;
+              sizes[size] = img.thumbs[size].sizes;
             }
             body.append('data', JSON.stringify(sizes));
             data.push({body, attachmentId, attachment});
@@ -113,7 +115,40 @@ defined( 'ABSPATH' ) || die();
      * @return {string}
      */
     function imageSourceUrl(src) {
-      return src.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
+      const $hooks = window.vrannemstein_hooks || {};
+      const source_url = src.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
+
+      /**
+       * @function external:vrannemstein_hooks.imageSourceUrl
+       * @param {string} source_url
+       * @param {string} src
+       * @return {string}
+       */
+      if ($hooks.imageSourceUrl && $hooks.imageSourceUrl instanceof Function)
+        return $hooks.imageSourceUrl(source_url, src);
+
+      return source_url;
+    }
+
+    /**
+     * @private
+     * @param {string} dst
+     * @return {string}
+     */
+    function imageDestUrl(dst) {
+      const $hooks = window.vrannemstein_hooks || {};
+      const dest_url = dst.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
+
+      /**
+       * @function external:vrannemstein_hooks.imageDestUrl
+       * @param {string} dest_url
+       * @param {string} dst
+       * @return {string}
+       */
+      if ($hooks.imageDestUrl && $hooks.imageDestUrl instanceof Function)
+        return $hooks.imageDestUrl(dest_url, dst);
+
+      return dest_url;
     }
 
     /**
@@ -138,7 +173,8 @@ defined( 'ABSPATH' ) || die();
               if (img) {
                 const attachmentId = element.value;
                 const source_url = imageSourceUrl(img.src);
-                data.push({attachmentId, attachment: {id: attachmentId, source_url}, batch: true});
+                const dest_url = imageDestUrl(img.src);
+                data.push({attachmentId, attachment: {id: attachmentId, source_url, dest_url}, batch: true});
               }
             });
             createImageSubsizes(data)
@@ -215,7 +251,8 @@ defined( 'ABSPATH' ) || die();
             for (const item of items) {
               const attachmentId = item.id;
               const source_url = imageSourceUrl(item.attributes.url);
-              data.push({attachmentId, attachment: {id: attachmentId, source_url}, batch: true});
+              const dest_url = imageDestUrl(item.attributes.url);
+              data.push({attachmentId, attachment: {id: attachmentId, source_url, dest_url}, batch: true});
             }
             createImageSubsizes(data)
             .then(() => {

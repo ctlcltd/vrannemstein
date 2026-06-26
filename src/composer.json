@@ -10,7 +10,7 @@
     "authors": [{ "name": "Leonardo Laureti" }],
     "license": "GPL-2.0-or-later",
     "require": {
-        "phpdocumentor/shim": "^3.9"
+        "phpdocumentor/shim": "^3.10"
     },
     "config": {
         "allow-plugins": {
