@@ -11,7 +11,7 @@
 define('BASEPATH', realpath(__DIR__ . '/../inc/dist'));
 
 $files = [
-	'bulk-actions-script.php',
+	'bulk-resizer-script.php',
 	'postprocess-script.php',
 	'thumbnailer-script.php'
 ];

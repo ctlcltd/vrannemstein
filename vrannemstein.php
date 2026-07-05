@@ -11,7 +11,7 @@
  * Update URI: false
  * Requires at least: 6.8
  * Requires PHP: 8.3
- * Version: 0.1.5
+ * Version: 0.1.6
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	const string VERSION = '0.1.5';
+	const string VERSION = '0.1.6';
 	const string WASM_VIPS_VERSION = '0.0.18'; // reflects package.json version
 
 	public int $queue_priority = 9999; // higher scripts enqueue priority
@@ -37,12 +37,12 @@ class Vrannemstein {
 		add_action( 'load-media-new.php', array( $this, 'backend' ) );
 
 		/**
-		 * Filter to allow bulk actions generate thumbnails
+		 * Filter to allow bulk resizer thumbnails
 		 *
 		 * @param bool $allow default true
 		 */
-		if ( apply_filters( 'vrannemstein_bulk_actions', '__return_true' ) ) {
-			add_action( 'load-upload.php', array( $this, 'bulk_actions' ) );
+		if ( apply_filters( 'vrannemstein_bulk_resizer', '__return_true' ) ) {
+			add_action( 'load-upload.php', array( $this, 'bulk_resizer' ) );
 		}
 
 		/**
@@ -84,9 +84,10 @@ class Vrannemstein {
 		return apply_filters( 'vrannemstein_config', array(
 			'verbosity' => 7, // flags (0 none, 1 log, 2 info, 4 error, 7 all)
 			'debug' => false, // debug wasm-vips
-			'dynamicLibraries' => array(), // dynamic wasm-vips libraries
-			'noImageDecoding' => true, // disallow browser image decoding wasm-vips, default true
 			'image_sizes' => wp_get_registered_image_subsizes(),
+			'noImageDecoding' => true, // disallow browser image decoding on wasm-vips load, default true
+			'dynamicLibraries' => array('vips-heif.wasm'), // dynamic wasm-vips libraries load [vips-jxl.wasm, vips-heif.wasm, vips-resvg.wasm]
+			'checkMimeType' => true, // check for input file MIME type, default true
 			'density' => 72, // metadata resolution in dpi, default 72 (false = use source resolution from exif data)
 			'readXmp' => false, // allow vrannemstein_hooks.readXmp javascript hook, default false
 			'readExif' => false, // allow vrannemstein_hooks.readExif javascript hook, default false
@@ -178,10 +179,10 @@ class Vrannemstein {
 		add_action( 'admin_print_footer_scripts', array( $this, 'postprocess_script' ), $this->queue_priority );
 	}
 
-	public function bulk_actions() {
+	public function bulk_resizer() {
 		if ( current_user_can( 'upload_files' ) && current_user_can( 'edit_posts' ) ) {
-			add_filter( 'bulk_actions-upload', array( $this, 'bulk_actions_generate_thumbnails' ) );
-			add_action( 'admin_print_footer_scripts', array( $this, 'bulk_actions_script' ), $this->queue_priority );
+			add_filter( 'bulk_actions-upload', array( $this, 'bulk_resizer_generate_thumbnails' ) );
+			add_action( 'admin_print_footer_scripts', array( $this, 'bulk_resizer_script' ), $this->queue_priority );
 		}
 	}
 
@@ -193,8 +194,8 @@ class Vrannemstein {
 	 * @param array $actions Bulk actions for media view
 	 * @return array $actions
 	 */
-	public function bulk_actions_generate_thumbnails( $actions ) {
-		$actions = array( 'bulk-thumbnails' => __( 'Update File' ), ...$actions );
+	public function bulk_resizer_generate_thumbnails( $actions ) {
+		$actions = array( 'bulk-resizer' => __( 'Update File' ), ...$actions );
 		return $actions;
 	}
 
@@ -229,10 +230,10 @@ class Vrannemstein {
 	}
 
 	/**
-	 * Bulk actions script: WP Media Library
+	 * Bulk resizer script: WP Media Library
 	 */
-	public function bulk_actions_script() {
-		include_once __DIR__ . '/inc/dist/bulk-actions-script' . ( SCRIPT_DEBUG ? '' : '-min' ) . '.php';
+	public function bulk_resizer_script() {
+		include_once __DIR__ . '/inc/dist/bulk-resizer-script' . ( SCRIPT_DEBUG ? '' : '-min' ) . '.php';
 	}
 
 	protected function crossorigin_policies() {

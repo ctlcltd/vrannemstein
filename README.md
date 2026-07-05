@@ -4,6 +4,8 @@ Vrannemstein is a WordPress plugin to make image thumbnails via the client-side.
 
 It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) (vips image processing library).
 
+For a more official way see at the [wordpress/gutenberg](https://github.com/wordpress/gutenberg/tree/HEAD/packages/vips) repository.
+
 
 ## Usage
 
@@ -40,14 +42,15 @@ function config_example( $config ) {
 
     return array(
         'verbosity' => 7, // flags (0 none, 1 log, 2 info, 4 error, 7 all)
-        'debug' => false, // debug wasm-vips
-        'dynamicLibraries' => array(), // dynamic wasm-vips libraries
-        'noImageDecoding' => true, // disallow browser image decoding wasm-vips, default true
+        'debug' => false, // debug wasm-vips, default false
         'image_sizes' => $config['image_sizes'], // default wp_get_registered_image_subsizes()
-        'density' => 72, // metadata resolution in dpi, default 72 (false = use source resolution from exif data)
-		// 'readXmp' => true, // allow vrannemstein_hooks.readXmp hook, default false
-		// 'readExif' => true, // allow vrannemstein_hooks.readExif hook, default false
-		// 'readIptc' => true, // allow vrannemstein_hooks.readIptc hook, default false
+        'noImageDecoding' => true, // disallow browser image decoding on wasm-vips load, default true
+        'dynamicLibraries' => array('vips-heif.wasm'), // dynamic wasm-vips libraries [vips-jxl.wasm, vips-heif.wasm, vips-resvg.wasm]
+        'checkMimeType' => true, // check for input file MIME type, default true
+        // 'density' => 72, // metadata resolution in dpi, default 72 (false = use source resolution from exif data)
+		    // 'readXmp' => true, // allow vrannemstein_hooks.readXmp hook, default false
+		    // 'readExif' => true, // allow vrannemstein_hooks.readExif hook, default false
+		    // 'readIptc' => true, // allow vrannemstein_hooks.readIptc hook, default false
         'reduce' => array(
             'center' => true, // default true
             'kernel' => 5 // resample kernel, default 5, VipsKernel(0 nearest, 1 linear, 2 cubic, 3 mitchell, 4 lanczos2, 5 lanczos3, 6 mks2013, 7 mks2021)
@@ -58,9 +61,9 @@ function config_example( $config ) {
         'jpegsave' => array(
             'Q' => 85, // quality factor, defaults wp 82, php 75, gd 75, vips 75
             'interlace' => false, // progressive jpeg, default false
-			'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
-			'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
-			'trellis_quant' => true, // default false
+			      'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
+			      'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
+			      'trellis_quant' => true, // default false
             'subsample_mode' => 0, // jpeg chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
@@ -70,7 +73,7 @@ function config_example( $config ) {
             'dither' => 0, // default 100, min 0, max 100
             'interlace' => false, // progressive png, default false
             'palette' => true, // png 8-bit 256 colors palette, default false
-			'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+			      'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
             'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
@@ -102,6 +105,16 @@ function config_example( $config ) {
 add_filter( 'vrannemstein_config', 'config_example' );
 ```
 
+## Bulk Resizer
+
+This plugin comes with a built-in bulk resizer action to request thumbnails resize on demand, directly from the "Media" Library page.
+
+To turn off the bulk action, filters `"vrannemstein_bulk_resizer"` from your theme or plugin.
+
+```php
+add_filter( 'vrannemstein_bulk_resizer', '__return_false' );
+```
+
 ## Hooks [javascript]
 
 To use javascript hooks, export a global property named `vrannemstein_hooks`.
@@ -121,22 +134,97 @@ vrannemstein_hooks.writeXmp = (source_url) => '<x:xmpmeta xmlns:x="adobe:ns:meta
 vrannemstein_hooks.writeExif = (source_url) => ({ IFD2: { UserComment: 'test' } });
 vrannemstein_hooks.writeIptc = (source_url) => (new Uint8Array());
 
-vrannemstein_hooks.imageSourceUrl = (source_url, src) => source_url.replace(/\.jpe?g$/, '.jxl');
-vrannemstein_hooks.imageDestUrl = (dest_url, dst) => dest_url.replace(/\.[.]*$/, '.avif');
+vrannemstein_hooks.postProcessImageSourceUrl = (src) => src.replace(/\.jpe?g$/i, '.jxl');
+vrannemstein_hooks.postProcessImageDestUrl = (dst) => dst.replace(/\.[^\.]*$/, '.webp');
 
-vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => ({shrink: false, resize: false, crop: false});
+vrannemstein_hooks.bulkImageSourceUrl = (source_url, src) => source_url.replace(/\.jpe?g$/i, '.tiff');
+vrannemstein_hooks.bulkImageDestUrl = (dest_url, dst) => dest_url.replace(/\.[^\.]*$/, '.avif');
+
+vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => ({preShrink: false, resize: false, crop: false});
+vrannemstein_hooks.imageReadOpts = (opts, readOpts, source_url, extname) => ({shrink: 1, ...opts});
 vrannemstein_hooks.imageWriteOpts = (opts, writeOpts, sizes, source_url, extname) => ({Q: 95, subsample_mode: 2, ...opts});
-vrannemstein_hooks.imageDestFilename = (dest_filename, filename, sizes) => filename.replace(/(\.[.]*)$/, `-${sizes.dst_w}x${sizes.dst_h}$1`);
+vrannemstein_hooks.imageDestFilename = (dest_filename, filename, sizes) => filename.replace(/(\.[^\.]*)$/, `-${sizes.dst_w}x${sizes.dst_h}$1`);
+
+vrannemstein_hooks.imagePreprocessor = (vips, image, source_url, readOpts, writeOpts) => void;
+vrannemstein_hooks.imagePostprocessor = (vips, image, source_url, readOpts, writeOpts) => void;
 ```
 
-## Bulk Actions
+## Examples
 
-This plugin comes with a built-in bulk action to request thumbnails update on demand, directly from the "Media" Library page.
+Some powerful examples.
 
-To turn off bulk actions, filters `"vrannemstein_bulk_actions"` from your theme or plugin.
+Replace the image source path:
 
-```php
-add_filter( 'vrannemstein_bulk_actions', '__return_false' );
+```js
+vrannemstein_hooks.bulkImageSourceUrl = (source_url, src) => {
+  return source_url.replace('/wp-content/uploads', '/wp-content/images-hd-src');
+};
+```
+
+Change the quality factor on a per-size basis:
+
+```js
+var quality_factors = {
+  'thumbnail': 80,
+  'medium': 82,
+  'medium_large': 82,
+  'large': 86,
+  'full': 86,
+  'post-thumbnail': 80,
+  '1536x1536': 80,
+  '2048x2048': 80
+};
+
+vrannemstein_hooks.imageWriteOpts = (opts, writeOpts, sizes, source_url, extname) => {
+  const {size} = sizes;
+
+  if (/\.jpe?g$/i.test(extname)) {
+    opts.Q = quality_factors[size];
+  }
+
+  return opts;
+};
+```
+
+Change the resample kernel per image format:
+```js
+vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => {
+  if (/\.(webp|avif)/i).test(extname)) {
+    thumbOpts.reduce = {kernel: 1}; // VipsKernel(1 linear)
+  }
+
+  return opts;
+}
+```
+
+Exclude an image from the bulk resizer:
+
+```js
+vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => {
+  const filename = source_url.replace(/.+\/([^/]+)/, '$1');
+
+  if (extname === '.gif' && filename === 'animated.gif') {
+    return null;
+  }
+
+  return opts;
+}
+```
+
+Grayscale an image using the pre-processor hook:
+
+```js
+vrannemstein_hooks.imagePreprocessor = (vips, image, source_url, readOpts, writeOpts) => {
+  const filename = source_url.replace(/.+\/([^/]+)/, '$1');
+
+  if (filename === 'colors.jpg') {
+    const grayscale = image.colourspace('b-w');
+
+    return grayscale.copy({'interpretation': 'srgb'});
+  }
+
+  return image;
+}
 ```
 
 ## Cross-Origin Policies

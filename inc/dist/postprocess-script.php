@@ -10,7 +10,7 @@
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
- * @version 0.1.5
+ * @version 0.1.6
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -42,6 +42,46 @@ defined( 'ABSPATH' ) || die();
   const vrannemsteinPostProcessing = Object.freeze({
     /**
      * @protected
+     * @memberOf vrannemsteinPostProcessings
+     * @param {string} src
+     * @return {string}
+     */
+    postProcessImageSourceUrl: (src) => {
+      const $hooks = window.vrannemstein_hooks || {};
+
+      /**
+       * @function external:vrannemstein_hooks.postProcessImageSourceUrl
+       * @param {string} src
+       * @return {string}
+       */
+      if ($hooks.postProcessImageSourceUrl && $hooks.postProcessImageSourceUrl instanceof Function)
+        return $hooks.postProcessImageSourceUrl(src);
+
+      return src;
+    },
+
+    /**
+     * @protected
+     * @memberOf vrannemsteinPostProcessing
+     * @param {string} dst
+     * @return {string}
+     */
+    postProcessImageDestUrl: (dst) => {
+      const $hooks = window.vrannemstein_hooks || {};
+
+      /**
+       * @function external:vrannemstein_hooks.postProcessImageDestUrl
+       * @param {string} dst
+       * @return {string}
+       */
+      if ($hooks.postProcessImageDestUrl && $hooks.postProcessImageDestUrl instanceof Function)
+        return $hooks.postProcessImageDestUrl(dst);
+
+      return dst;
+    },
+
+    /**
+     * @protected
      * @memberOf vrannemsteinPostProcessing
      * @param {object} options
      * @param {wp.apiFetch} next
@@ -54,7 +94,11 @@ defined( 'ABSPATH' ) || die();
         attempts++;
         const body = new FormData();
         const p = new Promise((resolve, reject) => {
-          vrannemstein([attachment.source_url], batch)
+          const src = attachment.source_url;
+          const source_url = $fn.postProcessImageSourceUrl(src);
+          const dest_url = $fn.postProcessImageDestUrl(src);
+
+          vrannemstein([{source_url, dest_url}], batch)
           .then((imgs) => {
             try {
               const img = imgs[0];
@@ -63,8 +107,8 @@ defined( 'ABSPATH' ) || die();
               }
               const sizes = {};
               for (const size in img.thumbs) {
-                const {blob, type, filename} = img.thumbs[size];
-                body.append(size, new Blob([blob], {type}), filename);
+                const {blob, mime, filename} = img.thumbs[size];
+                body.append(size, new Blob([blob], {mime}), filename);
                 sizes[size] = img.thumbs[size].sizes;
               }
               body.append('data', JSON.stringify(sizes));
@@ -270,7 +314,7 @@ defined( 'ABSPATH' ) || die();
      * @requires globalThis.wp.apiFetch
      * @param {object|undefined} uploader
      */
-    pluploadTryout: (uploader) => {
+    puploadTryout: (uploader) => {
       debug && console.log('puploadTryout');
 
       try {

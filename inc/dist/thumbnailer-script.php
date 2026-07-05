@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.5
+ * @version 0.1.6
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -33,11 +33,25 @@ async function vrannemstein(images, batch) {
   const info = (...message) => (options.verbosity & 2) && console.info.call(console, ...message);
   const error = (...message) => (options.verbosity & 4) && console.error.call(console, ...message);
 
+  let em_opts = {};
+  for (const key of ['noImageDecoding', 'dynamicLibraries', 'preInit', 'preRun', 'postRun', 'onAbort', 'onRuntimeInitialized']) {
+    if (Object.keys(options).indexOf(key) !== -1)
+      em_opts[key] = options[key];
+  }
+  if (options.debug && ! em_opts.preRun) {
+    em_opts.preRun = (module) => {
+      module.ENV.VIPS_INFO = 1;
+      module.ENV.VIPS_LEAK = 1;
+    };
+  }
+  console.log({...em_opts});
+
   /**
    * @protected
    * @virtual
    * @async
    * @requires globalThis.Vips
+   * @external Vips
    */
   const $vips = async(options) => {
     if (batch && $fn.$vips)
@@ -47,16 +61,7 @@ async function vrannemstein(images, batch) {
     else
       return Vips(options);
   };
-  const vips = await $vips({
-    dynamicLibraries: options.dynamicLibraries,
-    noImageDecoding: options.noImageDecoding,
-    preRun: (module) => {
-      if (options.debug) {
-        module.ENV.VIPS_INFO = 1;
-        module.ENV.VIPS_LEAK = 1;
-      }
-    }
-  });
+  const vips = await $vips(em_opts);
 
   log('vips loaded', vips.version());
 
@@ -75,6 +80,7 @@ async function vrannemstein(images, batch) {
      * @param {string} dest_filename
      * @param {string} filename
      * @param {object} sizes
+     * @param {string} sizes.size
      * @param {number} sizes.src_w
      * @param {number} sizes.src_h
      * @param {number} sizes.dst_w
@@ -104,10 +110,14 @@ async function vrannemstein(images, batch) {
      * @function external:vrannemstein_hooks.imageThumbOpts
      * @param {object} opts
      * @param {object} thumbOpts
-     * @param {boolean} [thumbOpts.shrink=true]
+     * @param {boolean} [thumbOpts.preShrink=true]
      * @param {boolean} [thumbOpts.resize=true]
      * @param {boolean} [thumbOpts.crop=true]
+     * @param {number} [thumbOpts.density]
+     * @param {object} [thumbOpts.reduce]
+     * @param {object} [thumbOpts.smartcrop]
      * @param {object} sizes
+     * @param {string} sizes.size
      * @param {number} sizes.src_w
      * @param {number} sizes.src_h
      * @param {number} sizes.dst_w
@@ -125,6 +135,28 @@ async function vrannemstein(images, batch) {
 
   /**
    * @private
+   * @param {object} readOpts
+   * @param {string} source_url
+   * @param {string} extname
+   * @return {object}
+   */
+  function imageReadOpts(readOpts, source_url, extname) {
+    /**
+     * @function external:vrannemstein_hooks.imageReadOpts
+     * @param {object} opts
+     * @param {object} readOpts
+     * @param {string} source_url
+     * @param {string} extname
+     * @return {object}
+     */
+    if ($hooks.imageReadOpts && $hooks.imageReadOpts instanceof Function)
+      return $hooks.imageReadOpts({...readOpts}, readOpts, source_url, extname);
+      
+    return readOpts;
+  }
+
+  /**
+   * @private
    * @param {object} writeOpts
    * @param {object} sizes
    * @param {string} source_url
@@ -137,6 +169,7 @@ async function vrannemstein(images, batch) {
      * @param {object} opts
      * @param {object} writeOpts
      * @param {object} sizes
+     * @param {string} sizes.size
      * @param {number} sizes.src_w
      * @param {number} sizes.src_h
      * @param {number} sizes.dst_w
@@ -150,22 +183,6 @@ async function vrannemstein(images, batch) {
       return $hooks.imageWriteOpts({...writeOpts}, writeOpts, sizes, source_url, extname);
       
     return writeOpts;
-  }
-
-  /**
-   * @private
-   * @param {ArrayBuffer} blob
-   * @param {string} type
-   * @param {string} name
-   * @return {URL}
-   */
-  function tourl(blob, type, name) {
-    const obj = URL.createObjectURL(new Blob([blob], {type}));
-    const a = document.createElement('a');
-    a.href = obj;
-    a.innerText = `thumbnail ${name}`;
-    document.body.appendChild(a);
-    return obj;
   }
 
   /**
@@ -207,7 +224,7 @@ async function vrannemstein(images, batch) {
    * @param {number} shrink
    * @return {number}
    */
-  function jpegShrink(shrink) {
+  function preShrink(shrink) {
     let s = 1;
     if (shrink >= 8 * s) s = 8;
     else if (shrink >= 4 * s) s = 4;
@@ -247,29 +264,45 @@ async function vrannemstein(images, batch) {
      */
     const iptcData = $hooks.writeIptc && $hooks.writeIptc instanceof Function ? $hooks.writeIptc(source_url) : null;
 
-    if (thumbOpts.shrink && /image\/jpeg/.test(mime)) {
+    if (thumbOpts.preShrink && /image\/jpeg/.test(mime)) {
       let {shrink} = shrinking(src_w, src_h, dst_w, dst_h, crop);
-      readOpts.shrink = jpegShrink(shrink); // integer
-      info(' ', 'thumb shrink', name, {initial: shrink, jpeg: readOpts.shrink});
+      readOpts.shrink = preShrink(shrink); // integer
+      info(' ', 'thumb shrink', name, {initial: shrink, preShrink: readOpts.shrink});
     }
 
-    using image = vips.Image.newFromBuffer(blob, readOpts);
+    const r_opts = imageReadOpts(readOpts, source_url, extname);
+
+    const image = vips.Image.newFromBuffer(blob, r_opts);
     image.setDeleteOnClose(true);
-    let thumb;
+    let thumb = image;
+
+    /**
+     * @function external:vrannemstein_hooks.imagePreprocessor
+     * @param {Vips} vips
+     * @param {VipsImage} image
+     * @param {string} source_url
+     * @param {object} readOpts
+     * @param {object} writeOpts
+     * @param {VipsImage} thumb
+     */
+    if ($hooks.imagePreprocessor && $hooks.imagePreprocessor instanceof Function) {
+      thumb = $hooks.imagePreprocessor(vips, thumb, source_url, readOpts, writeOpts);
+    }
 
     if (thumbOpts.resize) {
       let {hshrink, vshrink} = shrinking(image.width, image.height, dst_w, dst_h, crop);
       info(' ', 'thumb reduce', name, {hshrink, vshrink, crop});
-      thumb = image.reduce(hshrink, vshrink, options.reduce ?? null);
-    } else {
-      thumb = image.copy();
+      thumb = thumb.reduce(hshrink, vshrink, thumbOpts.reduce ?? options.reduce ?? null);
     }
 
-    if (thumbOpts.crop && crop)
-      thumb = thumb.smartcrop(dst_w, dst_h, options.smartcrop ?? null);
+    if (thumbOpts.crop && crop) {
+      thumb = thumb.smartcrop(dst_w, dst_h, thumbOpts.smartcrop ?? options.smartcrop ?? null);
+    }
 
-    if (writeOpts.keep && (writeOpts.keep & 1) && options.density)
-      thumb = thumb.copy({xres: options.density / 25.4, yres: options.density / 25.4}); // px/mm
+    if (writeOpts.keep && (writeOpts.keep & 1) && (thumbOpts.density || options.density)) {
+      const density = thumbOpts.density || options.density;
+      thumb = thumb.copy({xres: density / 25.4, yres: density / 25.4}); // px/mm
+    }
 
     if (xmpData != null) {
       thumb.remove('xmp-data');
@@ -304,10 +337,22 @@ async function vrannemstein(images, batch) {
     }
 
     log('thumbnail', name, {w: thumb.width, h: thumb.height});
+  
+    /**
+     * @function external:vrannemstein_hooks.imagePostprocessor
+     * @param {Vips} vips
+     * @param {VipsImage} image
+     * @param {string} source_url
+     * @param {object} readOpts
+     * @param {object} writeOpts
+     * @return {VipsImage}
+     */
+    if ($hooks.imagePostprocessor && $hooks.imagePostprocessor instanceof Function) {
+      thumb = $hooks.imagePostprocessor(vips, thumb, source_url, readOpts, writeOpts);
+    }
 
     const out = thumb.writeToBuffer(extname, writeOpts);
     thumb = null;
-    // return tourl(out, mime, name); // testing
 
     return out;
   }
@@ -324,40 +369,38 @@ async function vrannemstein(images, batch) {
     const filename = dest_url.replace(/.+\/([^/]+)/, '$1');
     const extname = filename.replace(/.+(\.[^\.]+)$/, '$1');
 
-    using source = vips.Image.newFromBuffer(blob);
+    const r_opts = imageReadOpts(null, source_url, extname);
+
+    const source = vips.Image.newFromBuffer(blob, r_opts);
     source.setDeleteOnClose(true);
 
-    let mime, writeOpts;
     const loader = source.getString('vips-loader');
 
-    if (/^jpeg/.test(loader)) {
-      mime = 'image/jpeg';
-    } else if (/^png/.test(loader)) {
-      mime = 'image/png';
-    } else if (/^gif/.test(loader)) {
-      mime = 'image/gif';
-    } else if (/^webp/.test(loader)) {
-      mime = 'image/webp';
-    } else if (/^avif/.test(loader)) {
-      mime = 'image/avif';
-    } else {
-      return error('Not supported mime-type.', {loader});
+    if (! /^(jpeg|png|gif|webp|svg|avif|heif|jxl|ppm|tiff|raw|rad|uhdr|analyze6|csv|matrix|vips)/.test(loader)) {
+      return error('Not supported file format input.', {loader});
     }
 
+    let mime, writeOpts;
+
     if (/jpg|jpeg|jpe/.test(extname)) {
+      mime = 'image/jpeg';
       writeOpts = options.jpegsave;
     } else if (/png/.test(extname)) {
+      mime = 'image/png';
       writeOpts = options.pngsave;
     } else if (/gif/.test(extname)) {
+      mime = 'image/gif';
       writeOpts = options.gifsave;
     } else if (/webp/.test(extname)) {
+      mime = 'image/webp';
       writeOpts = options.webpsave;
     } else if (/avif/.test(extname)) {
       // heifsave compression VipsForeignHeifCompression(1 hevc, 2 avc, 3 jpeg, 4 av1)
       // heifsave encoder VipsForeignHeifCompression(0 auto, 1 aom, 2 rav1e, 3 svt, 4 x265)
       const opts = {compression: 4, encoder: 1};
+      mime = 'image/avif';
       writeOpts = {...options.avifsave, ...opts};
-    } else {
+    } else if (options.checkMimeType ?? true) {
       return error('Not supported file format output.', {extname});
     }
 
@@ -434,17 +477,17 @@ async function vrannemstein(images, batch) {
 
       info('thumb', name, {dst_w, dst_h, mw, mh, crop});
 
-      const sizes = {src_w, src_h, dst_w, dst_h, crop};
-      const thumbOpts = imageThumbOpts({shrink: true, resize: true, crop: true}, sizes, source_url, extname);
+      const sizes = {size, src_w, src_h, dst_w, dst_h, crop};
+      const thumbOpts = imageThumbOpts({preShrink: true, resize: true, crop: true}, sizes, source_url, extname);
 
       if (! thumbOpts) {
         info(' ', 'thumb skip', name, {src_w, src_h});
         continue;
       }
 
-      const opts = imageWriteOpts(writeOpts, sizes, source_url, extname);
+      const w_opts = imageWriteOpts(writeOpts, sizes, source_url, extname);
       const dest_filename = imageDestFilename(filename, sizes);
-      const thumb = await thumbnail(blob, opts, name, {source_url, mime, dest_url, extname, thumbOpts, ...sizes});
+      const thumb = await thumbnail(blob, w_opts, name, {source_url, mime, dest_url, extname, thumbOpts, ...sizes});
       thumbs[size] = {blob: thumb, mime, filename: dest_filename, sizes};
     };
 
@@ -456,14 +499,6 @@ async function vrannemstein(images, batch) {
 
   const p = [];
   for (const {source_url, dest_url} of images) {
-    if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(source_url)) {
-      error('Not supported file format input.');
-      continue;
-    }
-    if (! /\.(jpg|jpeg|jpe|gif|png|webp|avif)$/i.test(dest_url)) {
-      error('Not supported file format output.');
-      continue;
-    }
     p.push(
       new Promise((resolve, reject) => {
         fetch(source_url, {mode: 'same-origin'})

@@ -1,16 +1,16 @@
 <?php
 /**
- * Vrannemstein bulk actions javascript
+ * Vrannemstein bulk resizer javascript
  *
  * @package vrannemstein
- * @version 0.1.5
+ * @version 0.1.6
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
 
 defined( 'ABSPATH' ) || die();
 
-?><script id="vrannemstein-bulk-actions-script">
+?><script id="vrannemstein-bulk-resizer-script">
 (function(wp, jQuery) {
   /** @external vrannemstein_hooks */
 
@@ -51,7 +51,7 @@ defined( 'ABSPATH' ) || die();
    * @requires globalThis.wp.media
    * @requires globalThis.wp.apiFetch
    */
-  function vrannemsteinBulkThumbnails() {
+  function vrannemsteinBulkResizer() {
     const mode = wp.media ? 1 : 0; // (0 list, 1 grid)
 
     /**
@@ -114,18 +114,18 @@ defined( 'ABSPATH' ) || die();
      * @param {string} src
      * @return {string}
      */
-    function imageSourceUrl(src) {
+    function bulkImageSourceUrl(src) {
       const $hooks = window.vrannemstein_hooks || {};
       const source_url = src.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
 
       /**
-       * @function external:vrannemstein_hooks.imageSourceUrl
+       * @function external:vrannemstein_hooks.bulkImageSourceUrl
        * @param {string} source_url
        * @param {string} src
        * @return {string}
        */
-      if ($hooks.imageSourceUrl && $hooks.imageSourceUrl instanceof Function)
-        return $hooks.imageSourceUrl(source_url, src);
+      if ($hooks.bulkImageSourceUrl && $hooks.bulkImageSourceUrl instanceof Function)
+        return $hooks.bulkImageSourceUrl(source_url, src);
 
       return source_url;
     }
@@ -135,18 +135,18 @@ defined( 'ABSPATH' ) || die();
      * @param {string} dst
      * @return {string}
      */
-    function imageDestUrl(dst) {
+    function bulkImageDestUrl(dst) {
       const $hooks = window.vrannemstein_hooks || {};
       const dest_url = dst.replace(/-\d+x\d+(\.[^\.]+)$/, '$1');
 
       /**
-       * @function external:vrannemstein_hooks.imageDestUrl
+       * @function external:vrannemstein_hooks.bulkImageDestUrl
        * @param {string} dest_url
        * @param {string} dst
        * @return {string}
        */
-      if ($hooks.imageDestUrl && $hooks.imageDestUrl instanceof Function)
-        return $hooks.imageDestUrl(dest_url, dst);
+      if ($hooks.bulkImageDestUrl && $hooks.bulkImageDestUrl instanceof Function)
+        return $hooks.bulkImageDestUrl(dest_url, dst);
 
       return dest_url;
     }
@@ -155,13 +155,13 @@ defined( 'ABSPATH' ) || die();
      * @private
      */
     function bulkMediaList() {
-      debug && console.log('bulkMediaList');
+      debug && console.log('createImageSubsizes');
 
       const form = document.querySelector('form#posts-filter');
       function submit(event) {
         const bulk = this.querySelector('select[name="action"]');
 
-        if (bulk.value === 'bulk-thumbnails') {
+        if (bulk.value === 'bulk-resizer') {
           event.preventDefault();
 
           if (this.querySelector('input[name="media[]"]:checked')) {
@@ -172,8 +172,9 @@ defined( 'ABSPATH' ) || die();
               const img = row.querySelector('img');
               if (img) {
                 const attachmentId = element.value;
-                const source_url = imageSourceUrl(img.src);
-                const dest_url = imageDestUrl(img.src);
+                const src = img.src;
+                const source_url = bulkImageSourceUrl(src);
+                const dest_url = bulkImageDestUrl(src);
                 data.push({attachmentId, attachment: {id: attachmentId, source_url, dest_url}, batch: true});
               }
             });
@@ -204,7 +205,7 @@ defined( 'ABSPATH' ) || die();
       const toolbar = frame.browserView.toolbar;
       const l10n = view.l10n;
       const Button = view.Button;
-      const BulkThumbnailsButton = Button.extend({
+      const BulkResizerButton = Button.extend({
         initialize: function() {
           Button.prototype.initialize.apply(this, arguments);
           this.controller.on('selection:toggle', this.toggleDisabled, this);
@@ -215,7 +216,7 @@ defined( 'ABSPATH' ) || die();
         },
         render: function() {
           Button.prototype.render.apply(this, arguments);
-          this.$el.addClass('bulk-thumbnails-button hidden');
+          this.$el.addClass('bulk-resizer-button hidden');
           if (! this.controller.isModeActive('select')) {
             this.$el.addClass('hidden');
           } else {
@@ -227,11 +228,11 @@ defined( 'ABSPATH' ) || die();
       });
       const toggler = () => {
         if (controller.isModeActive('select'))
-          toolbar.$('.bulk-thumbnails-button').removeClass('hidden');
+          toolbar.$('.bulk-resizer-button').removeClass('hidden');
         else
-          toolbar.$('.bulk-thumbnails-button').addClass('hidden');
+          toolbar.$('.bulk-resizer-button').addClass('hidden');
       };
-      const button = new BulkThumbnailsButton({
+      const button = new BulkResizerButton({
         filters: controller.state().get('filterable'),
         style: 'primary',
         disabled: true,
@@ -250,8 +251,9 @@ defined( 'ABSPATH' ) || die();
             const data = [];
             for (const item of items) {
               const attachmentId = item.id;
-              const source_url = imageSourceUrl(item.attributes.url);
-              const dest_url = imageDestUrl(item.attributes.url);
+              const src = item.attributes.url;
+              const source_url = bulkImageSourceUrl(src);
+              const dest_url = bulkImageDestUrl(src);
               data.push({attachmentId, attachment: {id: attachmentId, source_url, dest_url}, batch: true});
             }
             createImageSubsizes(data)
@@ -265,7 +267,7 @@ defined( 'ABSPATH' ) || die();
           }
         }
       });
-      view.BulkThumbnailsButton = BulkThumbnailsButton;
+      view.BulkResizerButton = BulkResizerButton;
 
       if (controller.isModeActive('grid'))
         toolbar.secondary.views.add(button, {at: -2});
@@ -276,7 +278,7 @@ defined( 'ABSPATH' ) || die();
     if (wp.apiFetch)
       mode ? bulkMediaGrid() : bulkMediaList();
   }
-  const $fn = vrannemsteinBulkThumbnails;
+  const $fn = vrannemsteinBulkResizer;
 
   wp = wp || {};
   jQuery(function() {
