@@ -48,9 +48,9 @@ function config_example( $config ) {
         'dynamicLibraries' => array('vips-heif.wasm'), // dynamic wasm-vips libraries [vips-jxl.wasm, vips-heif.wasm, vips-resvg.wasm]
         'checkMimeType' => true, // check for input file MIME type, default true
         // 'density' => 72, // metadata resolution in dpi, default 72 (false = use source resolution from exif data)
-		    // 'readXmp' => true, // allow vrannemstein_hooks.readXmp hook, default false
-		    // 'readExif' => true, // allow vrannemstein_hooks.readExif hook, default false
-		    // 'readIptc' => true, // allow vrannemstein_hooks.readIptc hook, default false
+        // 'readXmp' => true, // allow vrannemstein_hooks.readXmp hook, default false
+        // 'readExif' => true, // allow vrannemstein_hooks.readExif hook, default false
+        // 'readIptc' => true, // allow vrannemstein_hooks.readIptc hook, default false
         'reduce' => array(
             'center' => true, // default true
             'kernel' => 5 // resample kernel, default 5, VipsKernel(0 nearest, 1 linear, 2 cubic, 3 mitchell, 4 lanczos2, 5 lanczos3, 6 mks2013, 7 mks2021)
@@ -61,9 +61,9 @@ function config_example( $config ) {
         'jpegsave' => array(
             'Q' => 85, // quality factor, defaults wp 82, php 75, gd 75, vips 75
             'interlace' => false, // progressive jpeg, default false
-			      'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
-			      'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
-			      'trellis_quant' => true, // default false
+            'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
+            'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
+            'trellis_quant' => true, // default false
             'subsample_mode' => 0, // jpeg chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
@@ -73,7 +73,7 @@ function config_example( $config ) {
             'dither' => 0, // default 100, min 0, max 100
             'interlace' => false, // progressive png, default false
             'palette' => true, // png 8-bit 256 colors palette, default false
-			      'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+            'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
             'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
