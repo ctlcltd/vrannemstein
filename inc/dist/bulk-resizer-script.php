@@ -3,7 +3,7 @@
  * Vrannemstein bulk resizer javascript
  *
  * @package vrannemstein
- * @version 0.1.6
+ * @version 0.1.7
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -11,12 +11,29 @@
 defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-bulk-resizer-script">
+/**
+ * @function anonymous function
+ * @description "vrannemstein-bulk-resizer-script" init function
+ *
+ * @requires wp
+ * @requires jQuery
+ * @requires vrannemstein
+ * @requires wp.media
+ * @requires wp.apiFetch
+ * @requires wp.i18n
+ * @param {wp} wp
+ * @param {jQuery} jQuery
+ */
 (function(wp, jQuery) {
-  /** @external vrannemstein_hooks */
-
   const debug = true;
 
   const NOTICE_DISMISS_DELAY = 5e3;
+  /**
+   * @param {string} type
+   * @param {string} message
+   * @param {boolean} dismiss
+   * @ignore
+   */
   const notice = (type, message, dismiss) => {
     const element = document.querySelector('.wp-header-end') || document.querySelector('.wrap h1, .wrap h2');
     const notice = document.createElement('div');
@@ -32,6 +49,10 @@ defined( 'ABSPATH' ) || die();
       }, NOTICE_DISMISS_DELAY);
     }
   };
+  /**
+   * @param {mixed} err
+   * @ignore
+   */
   const errorNotice = (err) => {
     console.error(err);
 
@@ -39,6 +60,10 @@ defined( 'ABSPATH' ) || die();
     const message = wp_i18n.__('An unknown error occurred during creation. Please try again.');
     notice('error', message);
   };
+  /**
+   * @param {boolean} dismiss
+   * @ignore
+   */
   const successNotice = (dismiss) => {
     const wp_i18n = wp.i18n;
     const message = wp_i18n.__('Done');
@@ -46,19 +71,18 @@ defined( 'ABSPATH' ) || die();
   };
 
   /**
-   * @private
+   * @global
    * @constructor
-   * @requires globalThis.wp.media
-   * @requires globalThis.wp.apiFetch
+   * @see wp.media
+   * @see wp.apiFetch
    */
   function vrannemsteinBulkResizer() {
     const mode = wp.media ? 1 : 0; // (0 list, 1 grid)
 
     /**
-     * @private
-     * @requires globalThis.vrannemstein
-     * @requires globalThis.wp.apiFetch
-     * @param {array} items
+     * @see vrannemstein
+     * @see wp.apiFetch
+     * @param {Array} items
      * @return {Promise}
      */
     function createImageSubsizes(items) {
@@ -110,7 +134,7 @@ defined( 'ABSPATH' ) || die();
     }
 
     /**
-     * @private
+     * @static
      * @param {string} src
      * @return {string}
      */
@@ -129,9 +153,10 @@ defined( 'ABSPATH' ) || die();
 
       return source_url;
     }
+    $fn.bulkImageSourceUrl = bulkImageSourceUrl;
 
     /**
-     * @private
+     * @static
      * @param {string} dst
      * @return {string}
      */
@@ -150,12 +175,13 @@ defined( 'ABSPATH' ) || die();
 
       return dest_url;
     }
+    $fn.bulkImageDestUrl = bulkImageDestUrl;
 
     /**
-     * @private
+     * @inner
      */
     function bulkMediaList() {
-      debug && console.log('createImageSubsizes');
+      debug && console.log('bulkMediaList');
 
       const form = document.querySelector('form#posts-filter');
       function submit(event) {
@@ -193,8 +219,7 @@ defined( 'ABSPATH' ) || die();
     }
 
     /**
-     * @private
-     * @requires globalThis.wp.media
+     * @see wp.media
      */
     function bulkMediaGrid() {
       debug && console.log('bulkMediaGrid');
@@ -278,7 +303,7 @@ defined( 'ABSPATH' ) || die();
     if (wp.apiFetch)
       mode ? bulkMediaGrid() : bulkMediaList();
   }
-  const $fn = vrannemsteinBulkResizer;
+  const $fn = window.vrannemsteinBulkResizer = vrannemsteinBulkResizer;
 
   wp = wp || {};
   jQuery(function() {

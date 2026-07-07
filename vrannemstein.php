@@ -11,7 +11,7 @@
  * Update URI: false
  * Requires at least: 6.8
  * Requires PHP: 8.3
- * Version: 0.1.6
+ * Version: 0.1.7
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	const string VERSION = '0.1.6';
+	const string VERSION = '0.1.7';
 	const string WASM_VIPS_VERSION = '0.0.18'; // reflects package.json version
 
 	public int $queue_priority = 9999; // higher scripts enqueue priority
@@ -69,6 +69,9 @@ class Vrannemstein {
 	/**
 	 * Thumbnailer configuration
 	 *
+	 * @todo test gifload|webpload n=-1 (1 page, -1 all)
+	 * @todo test background type ArrayConstant SingleOrArray<number>
+	 *
 	 * @return array Script options
 	 */
 	public function thumbnailer_config() {
@@ -100,50 +103,50 @@ class Vrannemstein {
 				'interesting' => 1 // default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
 			),
 			'jpegsave' => array(
-				'Q' => 85, // quality factor, defaults wp 82, php 75, gd 75, vips 75
+				'Q' => 86, // quality factor, defaults wp 82, php 75, gd 75, vips 75
 				'interlace' => false, // progressive jpeg, default false
-				'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
-				'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
-				'trellis_quant' => true, // default false
-				// 'overshoot_deringing' => false, // default false
-				// 'optimize_scans' => false, // default false, forces to progressive jpeg
-				// 'subsample_mode' => 0, // jpeg chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
+				'optimize_coding' => true, // optimize huffman tables, defaults gd false, vips false, sharp-js true
+				'quant_table' => 3, // quantization table, default 0, defaults gd 0, mozjpeg 3, vips 0, enum (0 JPEG Annex K, 1 flat, 2 MSSIM tuned, 3 mozjpeg default, 4 PSNR-HVS-M tuned, 5, 6, 7, 8)
+				'trellis_quant' => true, // trellis code quantization, default false
+				// 'overshoot_deringing' => false, // oveshooting samples to reduce ringing artifacts, default false
+				// 'optimize_scans' => false, // progressive jpeg, optimize DCT coefficients, default false
+				// 'subsample_mode' => 0, // jpeg chroma subsampling, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
 				// 'background' => '#ffffff',
-				// 'page_height' => 0, // min 0, max 100000000
+				// 'page_height' => 0, // page height on multipage, min 0, max 100000000
 				'keep' => 0 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
 			),
 			'pngsave' => array(
 				'Q' => 100, // quantization value, default 100, min 0, max 100
-				'compression' => 9, // default 6, min 1, max 10
-				'dither' => 0, // default 100, min 0, max 100
+				'compression' => 9, // compression ratio, default 6, min 1, max 10
+				'dither' => 0, // dithering value, default 100, min 0, max 100
 				'interlace' => false, // progressive png, default false
-				'palette' => true, // png 8-bit 256 colors palette, default false
-				// 'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+				'palette' => true, // PNG-8 256 colors palette, default false
+				// 'bitdepth' => 8, // png image bit-depth, default 8, min 1, max 16, enum (1 mono, 2 mono+alpha, 4 PNG-8, 8 PNG-24, 16 PNG-48)
 				// 'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
 				// 'filter' => 0, // libpng filter flags, default 8, VipsForeignPngFilter(8 none, 16 sub, 32 up, 64 avg, 128 paeth, 248 all)
 				// 'background' => '#ffffff',
-				// 'page_height' => 0, // min 0, max 100000000
+				// 'page_height' => 0, // page height on multipage, min 0, max 100000000
 				'keep' => 0 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
 			),
-			'gifsave' => array(
-				'dither' => 1, // default 1, min 0, max 1
+			'gifsave' => array( // gifsave is cgifsave in vips
+				'dither' => 1, // dithering value, default 1, min 0, max 1
 				'interlace' => false, // progressive gif, default false
 				// 'reuse' => false, // reuse palette from input, default false
 				// 'interpalette_maxerror' => 3, // max inter-palette for reuse palette, default 3, max 256
-				// 'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+				// 'bitdepth' => 8, // gif palette bit-depth, default 8, min 1, max 8
 				// 'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
 				// 'keep_duplicate_frames' => false, // default false
 				// 'background' => '#ffffff',
-				// 'page_height' => 0, // min 0, max 100000000
+				// 'page_height' => 0, // page height on multipage, min 0, max 100000000
 				'keep' => 0 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
 			),
 			'webpsave' => array(
 				'Q' => 88, // quality factor, defaults wp 86, php 80, gd 75, vips 75
-				// 'lossless' => false, // default false
-				'smart_deblock' => true, // default false
-				'smart_subsample' => true, // default false
+				// 'lossless' => false, // lossless compression, default false (false = lossy compression)
+				'smart_deblock' => true, // webp smart deblocking filter, default false
+				'smart_subsample' => true, // webp smart chroma subsampling, default false
 				// 'effort' => 4, // cpu effort on file size, default 4, min 0, max 6
-				// 'passes' => 1, // default 1, min 1, max 10
+				// 'passes' => 1, // compression passes number, default 1, min 1, max 10
 				// 'alpha_q' => 100, // alpha quality in lossy, default 100, min 0, max 100
 				'exact' => true, // preserve color alpha, default false
 				// 'kmin' => 2147483646, // min frames between key frames, default 2147483646, min 0, max 2147483647
@@ -151,20 +154,21 @@ class Vrannemstein {
 				// 'min_size' => false, // optimize on min file size, default false
 				// 'target_size' => 0, // desired target size in bytes, default 0, min 0, max 2147483647
 				// 'mixed' => false, // allow mixed encoding, default false
-				// 'preset' => 0, // lossy presets, default 0, ForeignWebpPreset(0 default, 1 picture, 2 photo, 3 drawing, 4 icon, 5 text)
-				// 'near_lossless' => false, // preprocessing lossless using Q value, default false
+				// 'preset' => 0, // lossy presets, default 0, VipsForeignWebpPreset(0 default, 1 picture, 2 photo, 3 drawing, 4 icon, 5 text)
+				// 'near_lossless' => false, // pre-processing lossless using Q value, default false
 				// 'background' => '#ffffff',
-				// 'page_height' => 0, // min 0, max 100000000
+				// 'page_height' => 0, // page height on multipage, min 0, max 100000000
 				'keep' => 0 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
 			),
 			'avifsave' => array( // avifsave is heifsave in vips
 				'Q' => 55, // quality factor, defaults wp 52, php 52, vips 50
-				'bitdepth' => 10, // default 12, min 8, max 12
-   				// 'lossless' => false, // default false
-				// 'effort' => 4, // cpu effort value, default 4, min 0, max 9
-				// 'subsample_mode' => 0, // av1 chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
+				'bitdepth' => 10, // av1 image bit-depth, default 12, min 8, max 12
+   				// 'lossless' => false, // lossless compression, default false (false = lossy compression)
+				// 'effort' => 4, // av1 cpu effort value, default 4, min 0, max 9
+				// 'subsample_mode' => 0, // av1 chroma subsampling, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
+				// 'tune' => '', // av1 tuning parameters string
 				// 'background' => '#ffffff',
-				// 'page_height' => 0, // min 0, max 100000000
+				// 'page_height' => 0, // page height on multipage, min 0, max 100000000
 				'keep' => 0 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
 			)
 		) );

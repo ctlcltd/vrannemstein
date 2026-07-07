@@ -2,15 +2,17 @@
 /**
  * Vrannemstein post processing mixin javascript
  *
- *   postProcess
- *   vrannemsteinThumbnailerMiddleware (wp.apiFetch)
+ *   postProcessImageSourceUrl
+ *   postProcessImageDestUrl
+ *   getPostProcess
+ *   ThumbnailerMiddleware (wp.apiFetch)
  *   pluploadProcessing (wp-plupload)
- *   pluploadTryout
- *   blockEditorMediaUpload (editor.MediaUpload)
+ *   pluploadTryout (wp-plupload, wp.media)
+ *   blockEditorMediaUpload (wp.hooks.filters.editor.MediaUpload)
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
- * @version 0.1.6
+ * @version 0.1.7
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -18,9 +20,33 @@
 defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-postprocess-script">
+/**
+ * @function anonymous function
+ * @description "vrannemstein-postprocess-script" init function
+ *
+ * @todo media upload browser mode
+ *
+ * @requires wp
+ * @requires jQuery
+ * @requires vrannemstein
+ * @requires wp.media
+ * @requires wp.hooks
+ * @requires wp.apiFetch
+ * @requires wp.i18n
+ * @requires wp.hooks.filters.editor.MediaUpload
+ * @requires uploader
+ * @requires uploader_init
+ * @requires tinymce
+ * @param {wp} wp
+ * @param {jQuery} jQuery
+ */
 (function(wp, jQuery) {
   const debug = true;
 
+  /**
+   * @param {mixed} err
+   * @ignore
+   */
   const errorNotice = (err) => {
     console.error(err);
 
@@ -36,13 +62,12 @@ defined( 'ABSPATH' ) || die();
   };
 
   /**
-   * @private
+   * @global
    * @mixin
    */
   const vrannemsteinPostProcessing = Object.freeze({
     /**
-     * @protected
-     * @memberOf vrannemsteinPostProcessings
+     * @memberOf vrannemsteinPostProcessing
      * @param {string} src
      * @return {string}
      */
@@ -61,7 +86,6 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
      * @param {string} dst
      * @return {string}
@@ -81,8 +105,8 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
+     * @see wp.apiFetch
      * @param {object} options
      * @param {wp.apiFetch} next
      * @param {boolean} batch
@@ -146,15 +170,15 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
+     * @see wp.apiFetch
      * @param {object} options
      * @param {wp.apiFetch} next
      * @return {Promise|void}
      */
     ThumbnailerMiddleware: (options, next) => {
-      const isCreateMethod = !!options.method && options.method === 'POST';
-      const isMediaEndpoint = !!options.path && options.path.indexOf('/wp/v2/media') !== -1 || !!options.url && options.url.indexOf('/wp/v2/media') !== -1;
+      const isCreateMethod = !! options.method && options.method === 'POST';
+      const isMediaEndpoint = !! options.path && options.path.indexOf('/wp/v2/media') !== -1 || !! options.url && options.url.indexOf('/wp/v2/media') !== -1;
 
       if (! (isMediaEndpoint && isCreateMethod)) {
         return next(options);
@@ -215,17 +239,16 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
-     * @requires globalThis.wp.apiFetch
+     * @see uploader
      * @param {object} uploader
      */
-    puploadProcessing: (uploader) => {
-      debug && console.log('puploadProcessing');
+    pluploadProcessing: (uploader) => {
+      debug && console.log('pluploadProcessing');
 
       const data = [];
       const complete = (up, files) => {
-        debug && console.log('pupload.UploadComplete', {data});
+        debug && console.log('plupload.UploadComplete', {data});
 
         if (data.length && files.length) {
           const p = [];
@@ -262,7 +285,7 @@ defined( 'ABSPATH' ) || die();
         }
       };
       const uploaded = (up, file, response) => {
-        debug && console.log('pupload.FileUploaded', {response});
+        debug && console.log('plupload.FileUploaded', {response});
 
         if (response.status < 400 && file && /^image\//.test(file.type)) {
           try {
@@ -308,26 +331,24 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
-     * @requires globalThis.wp.media
-     * @requires globalThis.wp.apiFetch
+     * @see uploader
+     * @see wp.media
      * @param {object|undefined} uploader
      */
-    puploadTryout: (uploader) => {
-      debug && console.log('puploadTryout');
+    pluploadTryout: (uploader) => {
+      debug && console.log('pluploadTryout');
 
       try {
         uploader = uploader ?? wp.media.frame.uploader.uploader.uploader;
         if (wp.apiFetch)
-          $fn.puploadProcessing(uploader);
+          $fn.pluploadProcessing(uploader);
       } catch (err) {
         console.warn(err);
       }
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
      * @see wp.hooks.filters.editor.MediaUpload
      * @param {ReactComponent} component
@@ -346,9 +367,8 @@ defined( 'ABSPATH' ) || die();
     },
 
     /**
-     * @protected
      * @memberOf vrannemsteinPostProcessing
-     * @requires globalThis.tinymce
+     * @see tinymce
      */
     mceEditorMediaUpload: () => {
       debug && console.log('mceEditorMediaUpload');
@@ -368,17 +388,12 @@ defined( 'ABSPATH' ) || die();
       tinymce.on('RemoveEditor', removeEditor);
     }
   });
-  const $fn = vrannemsteinPostProcessing;
-  /**
-   * @external ThumbnailerMiddleware
-   * @see wp.apiFetch
-   */
+  const $fn = window.vrannemsteinPostProcessing = vrannemsteinPostProcessing;
   const vrannemsteinThumbnailerMiddleware = $fn.ThumbnailerMiddleware;
 
   wp = wp || {};
   jQuery(function() {
-    //todo media upload browser mode
-    window.uploader && uploader_init && $fn.puploadTryout(window.uploader);
+    window.uploader && uploader_init && $fn.pluploadTryout(window.uploader);
     wp.media && wp.media.frame && wp.media.frames.browse && wp.media.frame.on('uploader:ready', $fn.pluploadTryout);
   });
   wp.hooks && wp.hooks.addFilter('editor.MediaUpload', 'vrannemstein', $fn.blockEditorMediaUpload);

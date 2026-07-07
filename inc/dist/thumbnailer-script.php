@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.6
+ * @version 0.1.7
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -12,21 +12,20 @@ defined( 'ABSPATH' ) || die();
 
 ?><script id="vrannemstein-thumbnailer-script">
 /**
- * @public
+ * @see vrannemstein_config
+ *
  * @global
  * @async
  * @constructor
- * @param {array} images
+ * @requires Vips
+ * @param {Array} images
  * @param {boolean} batch
  */
 async function vrannemstein(images, batch) {
   const $fn = vrannemstein;
   /** @external vrannemstein_hooks */
   const $hooks = window.vrannemstein_hooks || {};
-  /**
-   * @external vrannemstein_config
-   * @see globalThis.vrannemstein_config
-   */
+  /** @external vrannemstein_config */
   const options = vrannemstein_config;
 
   const log = (...message) => (options.verbosity & 1) && console.log.call(console, ...message);
@@ -44,14 +43,11 @@ async function vrannemstein(images, batch) {
       module.ENV.VIPS_LEAK = 1;
     };
   }
-  console.log({...em_opts});
 
   /**
-   * @protected
-   * @virtual
    * @async
-   * @requires globalThis.Vips
-   * @external Vips
+   * @inner
+   * @see Vips
    */
   const $vips = async(options) => {
     if (batch && $fn.$vips)
@@ -66,7 +62,8 @@ async function vrannemstein(images, batch) {
   log('vips loaded', vips.version());
 
   /**
-   * @private
+   * @static
+   * @memberof vrannemstein
    * @param {string} filename
    * @param {object} sizes
    * @return {string}
@@ -93,9 +90,10 @@ async function vrannemstein(images, batch) {
 
     return dest_filename;
   }
+  $fn.imageDestFilename = imageDestFilename;
 
   /**
-   * @private
+   * @static
    * @param {object} thumbOpts
    * @param {object} sizes
    * @param {string} source_url
@@ -125,16 +123,17 @@ async function vrannemstein(images, batch) {
      * @param {boolean} sizes.crop
      * @param {string} source_url
      * @param {string} extname
-     * @return {(object|null)}
+     * @return {object|null}
      */
     if ($hooks.imageThumbOpts && $hooks.imageThumbOpts instanceof Function)
       return $hooks.imageThumbOpts(opts, thumbOpts, sizes, source_url, extname);
       
     return opts;
   }
+  $fn.imageThumbOpts = imageThumbOpts;
 
   /**
-   * @private
+   * @static
    * @param {object} readOpts
    * @param {string} source_url
    * @param {string} extname
@@ -154,9 +153,10 @@ async function vrannemstein(images, batch) {
       
     return readOpts;
   }
+  $fn.imageReadOpts = imageReadOpts;
 
   /**
-   * @private
+   * @static
    * @param {object} writeOpts
    * @param {object} sizes
    * @param {string} source_url
@@ -184,9 +184,10 @@ async function vrannemstein(images, batch) {
       
     return writeOpts;
   }
+  $fn.imageWriteOpts = imageWriteOpts;
 
   /**
-   * @private
+   * @static
    * @param {number} src_w
    * @param {number} src_h
    * @param {number} dst_w
@@ -220,7 +221,6 @@ async function vrannemstein(images, batch) {
   }
 
   /**
-   * @private
    * @param {number} shrink
    * @return {number}
    */
@@ -234,7 +234,6 @@ async function vrannemstein(images, batch) {
   }
 
   /**
-   * @private
    * @async
    * @param {ArrayBuffer} blob
    * @param {object} writeOpts
@@ -248,19 +247,19 @@ async function vrannemstein(images, batch) {
     /**
      * @function external:vrannemstein_hooks.writeXmp
      * @param {string} source_url
-     * @return {string}
+     * @return {string|Uint8Array}
      */
     const xmpData = $hooks.writeXmp && $hooks.writeXmp instanceof Function ? $hooks.writeXmp(source_url) : null;
     /**
      * @function external:vrannemstein_hooks.writeExif
      * @param {string} source_url
-     * @return {string}
+     * @return {object|Uint8Array}
      */
     const exifData = $hooks.writeExif && $hooks.writeExif instanceof Function ? $hooks.writeExif(source_url) : null;
     /**
      * @function external:vrannemstein_hooks.writeIptc
      * @param {string} source_url
-     * @return {string}
+     * @return {Uint8Array}
      */
     const iptcData = $hooks.writeIptc && $hooks.writeIptc instanceof Function ? $hooks.writeIptc(source_url) : null;
 
@@ -358,7 +357,8 @@ async function vrannemstein(images, batch) {
   }
 
   /**
-   * @private
+   * @todo test apng
+   *
    * @async
    * @param {string} source_url
    * @param {string} dest_url
@@ -376,7 +376,7 @@ async function vrannemstein(images, batch) {
 
     const loader = source.getString('vips-loader');
 
-    if (! /^(jpeg|png|gif|webp|svg|avif|heif|jxl|ppm|tiff|raw|rad|uhdr|analyze6|csv|matrix|vips)/.test(loader)) {
+    if (! /^(jpeg|png|gif|webp|svg|heif|jxl|ppm|tiff|raw|rad|uhdr|analyze6|csv|matrix|vips)/.test(loader)) {
       return error('Not supported file format input.', {loader});
     }
 
@@ -385,7 +385,7 @@ async function vrannemstein(images, batch) {
     if (/jpg|jpeg|jpe/.test(extname)) {
       mime = 'image/jpeg';
       writeOpts = options.jpegsave;
-    } else if (/png/.test(extname)) {
+    } else if (/png|apng/.test(extname)) {
       mime = 'image/png';
       writeOpts = options.pngsave;
     } else if (/gif/.test(extname)) {
@@ -413,7 +413,6 @@ async function vrannemstein(images, batch) {
        * @function external:vrannemstein_hooks.readXmp
        * @param {string} xmpData
        * @param {string} source_url
-       * @return {string}
        */
       if ($hooks.readXmp && $hooks.readXmp instanceof Function)
         $hooks.readXmp(xmpData, source_url);
@@ -427,7 +426,6 @@ async function vrannemstein(images, batch) {
        * @function external:vrannemstein_hooks.readExif
        * @param {string} exifData
        * @param {string} source_url
-       * @return {string}
        */
       if ($hooks.readExif && $hooks.readExif instanceof Function)
         $hooks.readExif(exifData, source_url);
@@ -439,9 +437,8 @@ async function vrannemstein(images, batch) {
 
       /**
        * @function external:vrannemstein_hooks.readIptc
-       * @param {string} iptcData
+       * @param {Uint8Array} iptcData
        * @param {string} source_url
-       * @return {string}
        */
       if ($hooks.readIptc && $hooks.readIptc instanceof Function)
         $hooks.readIptc(iptcData, source_url);

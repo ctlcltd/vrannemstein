@@ -3,7 +3,7 @@
  * REST API: Vrannemstein_REST_Controller
  *
  * @package vrannemstein
- * @version 0.1.6
+ * @version 0.1.7
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  * @api
@@ -199,8 +199,6 @@ class Vrannemstein_REST_Controller extends WP_REST_Attachments_Controller {
 		$attachment = get_post( $request['id'] );
 		$response = $this->prepare_item_for_response( $attachment, $request );
 		$response = rest_ensure_response( $response );
-		//
-		// $response->set_status( 502 ); // testing
 
 		return $response;
 	}

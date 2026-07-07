@@ -2,7 +2,7 @@
 
 Vrannemstein is a WordPress plugin to make image thumbnails via the client-side.
 
-It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) (vips image processing library).
+It uses [wasm-vips](https://github.com/kleisauke/wasm-vips), a WebAssembly (Emscripten) flavor of [libvips](https://www.libvips.org/) (Vips image processing library).
 
 For a more official way see at the [wordpress/gutenberg](https://github.com/wordpress/gutenberg/tree/HEAD/packages/vips) repository.
 
@@ -59,44 +59,45 @@ function config_example( $config ) {
             'interesting' => 1 // default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
         ),
         'jpegsave' => array(
-            'Q' => 85, // quality factor, defaults wp 82, php 75, gd 75, vips 75
+            'Q' => 86, // quality factor, defaults wp 82, php 75, gd 75, vips 75
             'interlace' => false, // progressive jpeg, default false
-            'optimize_coding' => true, // defaults gd false, vips false, sharp-js true
-            'quant_table' => 3, // defaults gd 0, mozjpeg 3, vips 0
-            'trellis_quant' => true, // default false
-            'subsample_mode' => 0, // jpeg chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
+            'optimize_coding' => true, // optimize huffman tables, defaults gd false, vips false, sharp-js true
+            'quant_table' => 3, // quantization table, default 0, defaults gd 0, mozjpeg 3, vips 0, enum (0 JPEG Annex K, 1 flat, 2 MSSIM tuned, 3 mozjpeg default, 4 PSNR-HVS-M tuned, 5, 6, 7, 8)
+            'trellis_quant' => true, // trellis code quantization, default false
+            'subsample_mode' => 0, // jpeg chroma subsampling, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
         'pngsave' => array(
             'Q' => 100, // quantization value, default 100, min 0, max 100
-            'compression' => 9, // default 6, min 1, max 10
-            'dither' => 0, // default 100, min 0, max 100
+            'compression' => 9, // compression ratio, default 6, min 1, max 10
+            'dither' => 0, // dithering value, default 100, min 0, max 100
             'interlace' => false, // progressive png, default false
-            'palette' => true, // png 8-bit 256 colors palette, default false
-            'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+            'palette' => true, // PNG-8 256 colors palette, default false
+            'bitdepth' => 8, // png image bit-depth, default 8, min 1, max 16, enum (1 mono, 2 mono+alpha, 4 PNG-8, 8 PNG-24, 16 PNG-48)
             'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
-        'gifsave' => array(
-            'dither' => 1, // default 1, min 0, max 1
+        'gifsave' => array( // gifsave is cgifsave in vips
+            'dither' => 1, // dithering value, default 1, min 0, max 1
             'interlace' => false, // progressive gif, default false
-            'bitdepth' => 8, // palette bit-depth, default 8, min 1, max 8
+            'bitdepth' => 8, // gif palette bit-depth, default 8, min 1, max 8
             'effort' => 7, // cpu effort on quantization, default 7, min 1, max 10
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
         'webpsave' => array(
             'Q' => 88, // quality factor, defaults wp 86, php 80, gd 75, vips 75
-            'smart_deblock' => true, // default false
-            'smart_subsample' => true, // default false
+            'smart_deblock' => true, // webp smart deblocking filter, default false
+            'smart_subsample' => true, // webp smart chroma subsample, default false
             'exact' => true, // preserve color alpha, default false
             'effort' => 4, // cpu effort on file size, default 4, min 0, max 6
+            'preset' => 0, // lossy presets, default 0, VipsForeignWebpPreset(0 default, 1 picture, 2 photo, 3 drawing, 4 icon, 5 text)
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         ),
         'avifsave' => array( // avifsave is heifsave in vips
             'Q' => 55, // quality factor, defaults wp 50, php 52, vips 50
-            'bitdepth' => 10, // default 12, min 8, max 12
-            'subsample_mode' => 0, // av1 chroma subsample, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
-            'effort' => 4, // cpu effort value, default 4, min 0, max 9
+            'bitdepth' => 10, // av1 image bit-depth, default 12, min 8, max 12
+            'effort' => 4, // av1 cpu effort value, default 4, min 0, max 9
+            'subsample_mode' => 0, // av1 chroma subsampling, default 0, VipsForeignSubsample(0 auto, 1 YUV420, 2 YUV444)
             'keep' => 3 // keep metadata flags, VipsForeignKeep(0 none, 1 exif, 2 xmp, 4 iptc, 8 icc, 16 other, 31 all)
         )
     );
@@ -165,14 +166,14 @@ Change the quality factor on a per-size basis:
 
 ```js
 var quality_factors = {
-  'thumbnail': 80,
-  'medium': 82,
-  'medium_large': 82,
-  'large': 86,
-  'full': 86,
-  'post-thumbnail': 80,
-  '1536x1536': 80,
-  '2048x2048': 80
+  'thumbnail': 78,
+  'medium': 76,
+  'medium_large': 76,
+  'large': 78,
+  'full': 92,
+  'post-thumbnail': 77,
+  '1536x1536': 69,
+  '2048x2048': 68
 };
 
 vrannemstein_hooks.imageWriteOpts = (opts, writeOpts, sizes, source_url, extname) => {
@@ -197,7 +198,7 @@ vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname
 }
 ```
 
-Exclude an image from the bulk resizer:
+Exclude an image from resize:
 
 ```js
 vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => {
