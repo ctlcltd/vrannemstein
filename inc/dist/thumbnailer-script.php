@@ -3,7 +3,7 @@
  * Vrannemstein thumbnailer javascript function
  *
  * @package vrannemstein
- * @version 0.1.7
+ * @version 0.1.8
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -263,7 +263,8 @@ async function vrannemstein(images, batch) {
      */
     const iptcData = $hooks.writeIptc && $hooks.writeIptc instanceof Function ? $hooks.writeIptc(source_url) : null;
 
-    if (thumbOpts.preShrink && /image\/jpeg/.test(mime)) {
+    // shrink on load VipsForeignLoadJpegBuffer(shrink)
+    if (thumbOpts.preShrink && mime === 'image/jpeg') {
       let {shrink} = shrinking(src_w, src_h, dst_w, dst_h, crop);
       readOpts.shrink = preShrink(shrink); // integer
       info(' ', 'thumb shrink', name, {initial: shrink, preShrink: readOpts.shrink});
@@ -382,19 +383,19 @@ async function vrannemstein(images, batch) {
 
     let mime, writeOpts;
 
-    if (/jpg|jpeg|jpe/.test(extname)) {
+    if (/\.(jpg|jpeg|jpe)$/i.test(extname)) {
       mime = 'image/jpeg';
       writeOpts = options.jpegsave;
-    } else if (/png|apng/.test(extname)) {
+    } else if (/\.(png|apng)$/i.test(extname)) {
       mime = 'image/png';
       writeOpts = options.pngsave;
-    } else if (/gif/.test(extname)) {
+    } else if (/\.gif$/i.test(extname)) {
       mime = 'image/gif';
       writeOpts = options.gifsave;
-    } else if (/webp/.test(extname)) {
+    } else if (/\.webp$/i.test(extname)) {
       mime = 'image/webp';
       writeOpts = options.webpsave;
-    } else if (/avif/.test(extname)) {
+    } else if (/\.avif$/i.test(extname)) {
       // heifsave compression VipsForeignHeifCompression(1 hevc, 2 avc, 3 jpeg, 4 av1)
       // heifsave encoder VipsForeignHeifCompression(0 auto, 1 aom, 2 rav1e, 3 svt, 4 x265)
       const opts = {compression: 4, encoder: 1};

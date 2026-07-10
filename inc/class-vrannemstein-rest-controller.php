@@ -3,7 +3,7 @@
  * REST API: Vrannemstein_REST_Controller
  *
  * @package vrannemstein
- * @version 0.1.7
+ * @version 0.1.8
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  * @api

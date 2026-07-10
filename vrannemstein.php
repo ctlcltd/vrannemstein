@@ -11,7 +11,7 @@
  * Update URI: false
  * Requires at least: 6.8
  * Requires PHP: 8.3
- * Version: 0.1.7
+ * Version: 0.1.8
  * Author: Leonardo Laureti
  * Author URI: https://github.com/ctlcltd
  * License: GPLv2 or later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || die();
 
 class Vrannemstein {
-	const string VERSION = '0.1.7';
+	const string VERSION = '0.1.8';
 	const string WASM_VIPS_VERSION = '0.0.18'; // reflects package.json version
 
 	public int $queue_priority = 9999; // higher scripts enqueue priority
@@ -96,11 +96,11 @@ class Vrannemstein {
 			'readExif' => false, // allow vrannemstein_hooks.readExif javascript hook, default false
 			'readIptc' => false, // allow vrannemstein_hooks.readIptc javascript hook, default false
 			'reduce' => array(
-				'center' => true, // default true
+				'centre' => true, // sampling offset, default true, (deprecated parameter)
 				'kernel' => 5 // resample kernel, default 5, VipsKernel(0 nearest, 1 linear, 2 cubic, 3 mitchell, 4 lanczos2, 5 lanczos3, 6 mks2013, 7 mks2021)
 			),
 			'smartcrop' => array(
-				'interesting' => 1 // default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
+				'interesting' => 1 // crop area, default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
 			),
 			'jpegsave' => array(
 				'Q' => 86, // quality factor, defaults wp 82, php 75, gd 75, vips 75

@@ -3,7 +3,7 @@
  * Vrannemstein bulk resizer javascript
  *
  * @package vrannemstein
- * @version 0.1.7
+ * @version 0.1.8
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -14,6 +14,7 @@ defined( 'ABSPATH' ) || die();
 /**
  * @function anonymous function
  * @description "vrannemstein-bulk-resizer-script" init function
+ * @see vrannemstein_config
  *
  * @requires wp
  * @requires jQuery
@@ -25,7 +26,7 @@ defined( 'ABSPATH' ) || die();
  * @param {jQuery} jQuery
  */
 (function(wp, jQuery) {
-  const debug = true;
+  const debug = vrannemstein_config.verbosity ?? 0;
 
   const NOTICE_DISMISS_DELAY = 5e3;
   /**
@@ -86,7 +87,7 @@ defined( 'ABSPATH' ) || die();
      * @return {Promise}
      */
     function createImageSubsizes(items) {
-      debug && console.log('createImageSubsizes', {items});
+      (debug & 1) && console.log('createImageSubsizes', {items});
 
       const refs = {};
       const images = [];
@@ -181,7 +182,7 @@ defined( 'ABSPATH' ) || die();
      * @inner
      */
     function bulkMediaList() {
-      debug && console.log('bulkMediaList');
+      (debug & 1) && console.log('bulkMediaList');
 
       const form = document.querySelector('form#posts-filter');
       function submit(event) {
@@ -222,7 +223,7 @@ defined( 'ABSPATH' ) || die();
      * @see wp.media
      */
     function bulkMediaGrid() {
-      debug && console.log('bulkMediaGrid');
+      (debug & 1) && console.log('bulkMediaGrid');
 
       const frame = wp.media.frames.browse;
       const view = wp.media.view;

@@ -33,8 +33,6 @@ foreach ($files as $filename) {
 	preg_match('/(<script[^>]*?>)(.*?)(<\/script>)/s', $file, $wrap);
 
 	$script = $wrap[2];
-	// turn off debug
-	$script = str_replace('const debug = true;', 'const debug = false;', $script);
 	// strip block comments
 	$script = preg_replace('/\/\*.*?\*\//s', '', $script);
 	// strip inline comments

@@ -12,7 +12,7 @@
  *   mceEditorMediaUpload (tinymce#WP_Medialib)
  * 
  * @package vrannemstein
- * @version 0.1.7
+ * @version 0.1.8
  * @author Leonardo Laureti
  * @license GPL-2.0-or-later
  */
@@ -23,6 +23,7 @@ defined( 'ABSPATH' ) || die();
 /**
  * @function anonymous function
  * @description "vrannemstein-postprocess-script" init function
+ * @see vrannemstein_config
  *
  * @todo media upload browser mode
  *
@@ -41,7 +42,7 @@ defined( 'ABSPATH' ) || die();
  * @param {jQuery} jQuery
  */
 (function(wp, jQuery) {
-  const debug = true;
+  const debug = vrannemstein_config.verbosity ?? 0;
 
   /**
    * @param {mixed} err
@@ -127,7 +128,9 @@ defined( 'ABSPATH' ) || die();
             try {
               const img = imgs[0];
               if (img.source_url != attachment.source_url) {
-                return console.error('URL mismatch.');
+                (debug & 2) && console.error('URL mismatch.');
+
+                return;
               }
               const sizes = {};
               for (const size in img.thumbs) {
@@ -145,7 +148,7 @@ defined( 'ABSPATH' ) || die();
         });
         return new Promise((resolve, reject) => {
           p.then(() => {
-            debug && console.log('postProcess', 'request', {attachmentId, attachment});
+            (debug & 1) && console.log('postProcess', 'request', {attachmentId, attachment});
 
             next({
               path: `/vrannemstein/v2/attachment/${attachmentId}/post-process?action=image-subsizes`,
@@ -156,7 +159,7 @@ defined( 'ABSPATH' ) || die();
             .then((response) => response.json().then(resolve).catch(reject))
             .catch(reject);
           }).catch((response) => {
-            console.warn('postProcess', 'error', {response});
+            (debug & 2) && console.warn('postProcess', 'error', {response});
 
             if (! attempts) {
               postProcess(attachmentId, attachment);
@@ -184,7 +187,7 @@ defined( 'ABSPATH' ) || die();
         return next(options);
       }
 
-      debug && console.log('ThumbnailerMiddleware', {options});
+      (debug & 1) && console.log('ThumbnailerMiddleware', {options});
 
       const wp_i18n = wp.i18n;
       const messages = {
@@ -195,12 +198,12 @@ defined( 'ABSPATH' ) || die();
 
       return next({...options, parse: false})
       .then((response) => {
-        debug && console.log('afterMediaUpload', {response});
+        (debug & 1) && console.log('afterMediaUpload', {response});
 
         return new Promise((resolve, reject) => {
           try {
             response.json().then((attachment) => {
-              debug && console.log('afterMediaUpload', {attachment});
+              (debug & 1) && console.log('afterMediaUpload', {attachment});
 
               if (attachment.media_type != 'image')
                 return Promise.resolve(next);
@@ -217,7 +220,7 @@ defined( 'ABSPATH' ) || die();
         });
       })
       .catch((response) => {
-        console.warn('afterMediaUpload', 'failed', {response});
+        (debug & 2) && console.warn('afterMediaUpload', 'failed', {response});
 
         return new Promise((resolve, reject) => {
           try {
@@ -244,11 +247,11 @@ defined( 'ABSPATH' ) || die();
      * @param {object} uploader
      */
     pluploadProcessing: (uploader) => {
-      debug && console.log('pluploadProcessing');
+      (debug & 1) && console.log('pluploadProcessing');
 
       const data = [];
       const complete = (up, files) => {
-        debug && console.log('plupload.UploadComplete', {data});
+        (debug & 1) && console.log('plupload.UploadComplete', {data});
 
         if (data.length && files.length) {
           const p = [];
@@ -285,7 +288,7 @@ defined( 'ABSPATH' ) || die();
         }
       };
       const uploaded = (up, file, response) => {
-        debug && console.log('plupload.FileUploaded', {response});
+        (debug & 1) && console.log('plupload.FileUploaded', {response});
 
         if (response.status < 400 && file && /^image\//.test(file.type)) {
           try {
@@ -314,7 +317,7 @@ defined( 'ABSPATH' ) || die();
             }
             data.push({filename: file.name, attachmentId, attachment});
           } catch(err) {
-            console.warn('Malformed data.', err);
+            (debug & 2) && console.warn('Malformed data.', err);
           }
         }
       };
@@ -337,14 +340,14 @@ defined( 'ABSPATH' ) || die();
      * @param {object|undefined} uploader
      */
     pluploadTryout: (uploader) => {
-      debug && console.log('pluploadTryout');
+      (debug & 1) && console.log('pluploadTryout');
 
       try {
         uploader = uploader ?? wp.media.frame.uploader.uploader.uploader;
         if (wp.apiFetch)
           $fn.pluploadProcessing(uploader);
       } catch (err) {
-        console.warn(err);
+        (debug & 2) && console.warn(err);
       }
     },
 
@@ -355,7 +358,7 @@ defined( 'ABSPATH' ) || die();
      * @return {ReactComponent}
      */
     blockEditorMediaUpload: (component) => {
-      debug && console.log('blockEditorMediaUpload');
+      (debug & 1) && console.log('blockEditorMediaUpload');
 
       class $MediaUpload extends component {
         onOpen() {
@@ -371,7 +374,7 @@ defined( 'ABSPATH' ) || die();
      * @see tinymce
      */
     mceEditorMediaUpload: () => {
-      debug && console.log('mceEditorMediaUpload');
+      (debug & 1) && console.log('mceEditorMediaUpload');
 
       const execCommand = (event) => {
         if (event.command === 'WP_Medialib') {

@@ -52,11 +52,11 @@ function config_example( $config ) {
         // 'readExif' => true, // allow vrannemstein_hooks.readExif hook, default false
         // 'readIptc' => true, // allow vrannemstein_hooks.readIptc hook, default false
         'reduce' => array(
-            'center' => true, // default true
+            'centre' => true, // sampling offset, default true, (deprecated parameter)
             'kernel' => 5 // resample kernel, default 5, VipsKernel(0 nearest, 1 linear, 2 cubic, 3 mitchell, 4 lanczos2, 5 lanczos3, 6 mks2013, 7 mks2021)
         ),
         'smartcrop' => array(
-            'interesting' => 1 // default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
+            'interesting' => 1 // crop area, default 3, VipsInteresting(0 none, 1 centre, 2 entropy, 3 attention, 4 low, 5 high, 6 all)
         ),
         'jpegsave' => array(
             'Q' => 86, // quality factor, defaults wp 82, php 75, gd 75, vips 75
@@ -154,6 +154,9 @@ vrannemstein_hooks.imagePostprocessor = (vips, image, source_url, readOpts, writ
 
 Some powerful examples.
 
+> [!TIP]
+> See the folder "examples-theme" for Twenty Twenty-Five Child Theme with examples.
+
 Replace the image source path:
 
 ```js
@@ -179,7 +182,7 @@ var quality_factors = {
 vrannemstein_hooks.imageWriteOpts = (opts, writeOpts, sizes, source_url, extname) => {
   const {size} = sizes;
 
-  if (/\.jpe?g$/i.test(extname)) {
+  if (/\.(jpg|jpeg|jpe)$/i.test(extname)) {
     opts.Q = quality_factors[size];
   }
 
@@ -187,10 +190,10 @@ vrannemstein_hooks.imageWriteOpts = (opts, writeOpts, sizes, source_url, extname
 };
 ```
 
-Change the resample kernel per image format:
+Change the resample kernel by image format:
 ```js
 vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => {
-  if (/\.(webp|avif)/i).test(extname)) {
+  if (/\.(webp|avif)$/i.test(extname)) {
     thumbOpts.reduce = {kernel: 1}; // VipsKernel(1 linear)
   }
 
@@ -204,7 +207,7 @@ Exclude an image from resize:
 vrannemstein_hooks.imageThumbOpts = (opts, thumbOpts, sizes, source_url, extname) => {
   const filename = source_url.replace(/.+\/([^/]+)/, '$1');
 
-  if (extname === '.gif' && filename === 'animated.gif') {
+  if (filename === 'animated.gif') {
     return null;
   }
 
@@ -238,7 +241,7 @@ Cross-Origin-Opener-Policy: same-origin
 ```
 
 > [!TIP]
-> See the `www-config-sample` folder for examples to configure the server properly.
+> See the folder "www-config-sample" for examples to configure the server properly.
 
 
 ## License
